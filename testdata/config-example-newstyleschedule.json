@@ -24,28 +24,38 @@
         6
       ],
       "enableWhenLightsAppear": true,
-      "defaultColorTemperature": 2750,
-      "defaultBrightness": 100,
-      "beforeSunrise": [
+      "schedule": [
         {
           "time": "4:00",
           "colorTemperature": 2000,
           "brightness": 60
-        }
-      ],
-      "afterSunset": [
+        },
         {
-          "time": "20:00",
-          "colorTemperature": 2300,
+          "time": "sunrise",
+          "colorTemperature": 2700,
+          "brightness": 60
+        },
+        {
+          "time": "sunrise + 30m",
+          "colorTemperature": 5000,
+          "brightness": 100
+        },
+        {
+          "time": "sunset - 30m",
+          "colorTemperature": 5000,
+          "brightness": 100
+        },
+        {
+          "time": "sunset",
+          "colorTemperature": 2700,
           "brightness": 80
         },
         {
           "time": "22:00",
           "colorTemperature": 2000,
-          "brightness": 60
+          "brightness": 70
         }
-      ],
-      "schedule": null
+      ]
     }
   ]
 }

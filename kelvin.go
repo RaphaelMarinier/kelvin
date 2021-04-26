@@ -174,9 +174,10 @@ func main() {
 }
 
 func updateScheduleForLight(light *Light) {
-	schedule, err := configuration.lightScheduleForDay(light.ID, time.Now())
+	sunCalculator := &SunStateCalculator{}
+	schedule, err := configuration.lightScheduleForDay(light.ID, time.Now(), sunCalculator)
 	if err != nil {
-		log.Printf("🤖 Light %s - Light is not associated to any schedule. Ignoring...", light.Name)
+		log.Printf("🤖 Light %s - Light is not associated to any schedule, or schedule has a problem. Got error %v. Ignoring...", light.Name, err)
 		light.Schedule = schedule // Assign empty schedule
 		light.Scheduled = false
 	} else {

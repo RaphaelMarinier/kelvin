@@ -28,6 +28,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/ghodss/yaml"
@@ -52,16 +54,38 @@ type WebInterface struct {
 	Port    int  `json:"port"`
 }
 
+// TODO: update webinterface.go with the new-style schedule.
+
 // LightSchedule represents the schedule for any given day for the associated lights.
 type LightSchedule struct {
-	Name                    string                  `json:"name"`
-	AssociatedDeviceIDs     []int                   `json:"associatedDeviceIDs"`
-	EnableWhenLightsAppear  bool                    `json:"enableWhenLightsAppear"`
+	Name                   string `json:"name"`
+	AssociatedDeviceIDs    []int  `json:"associatedDeviceIDs"`
+	EnableWhenLightsAppear bool   `json:"enableWhenLightsAppear"`
+
+	// Old-style schedule. Not used when the new-style schedule below is used.
 	DefaultColorTemperature int                     `json:"defaultColorTemperature"`
 	DefaultBrightness       int                     `json:"defaultBrightness"`
 	BeforeSunrise           []TimedColorTemperature `json:"beforeSunrise"`
 	AfterSunset             []TimedColorTemperature `json:"afterSunset"`
+
+	// New-style schedule.
+	// The `time` field of each time point can be a time (HH:MM), 'sunrise', 'sunset',
+	// 'sunrise +- NN minutes', 'sunset +- NN minutes'.
+	Schedule []TimedColorTemperature `json:"schedule"`
 }
+
+// Type of a time point, i.e. whether it comes from a fixed time (e.g. "12:00"), a
+// sunrise specification (e.g. "sunrise - 10m") or a sunset specification
+// (e.g. "sunset + 10m")
+type TimePointType int
+
+const (
+	UnsetTimePoint    TimePointType = iota
+	FixedTimePoint    TimePointType = iota
+	Sunrise           TimePointType = iota
+	Sunset            TimePointType = iota
+	NumTimePointTypes TimePointType = iota
+)
 
 // TimedColorTemperature represents a light configuration which will be
 // reached at the given time.
@@ -69,6 +93,13 @@ type TimedColorTemperature struct {
 	Time             string `json:"time"`
 	ColorTemperature int    `json:"colorTemperature"`
 	Brightness       int    `json:"brightness"`
+
+	// Result from parsing "Time".
+	ParsedTimePointType TimePointType `json:"-"`
+	// Only specified when ParsedTimePointType == FixedTimePoint.
+	ParsedTimeInDay time.Time `json:"-"`
+	// Only specified when ParsedTimePointType is Sunrise or Sunset.
+	ParsedOffset time.Duration `json:"-"`
 }
 
 // Configuration encapsulates all relevant parameters for Kelvin to operate.
@@ -237,7 +268,157 @@ func (configuration *Configuration) Read() error {
 	return nil
 }
 
-func (configuration *Configuration) lightScheduleForDay(light int, date time.Time) (Schedule, error) {
+func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
+	sunrise time.Time, sunset time.Time, date time.Time) ([]TimeStamp, error) {
+	log.Warningf("⚙ computeNewStyleSchedule")
+	yr, mth, dy := date.Date()
+	startOfDay := time.Date(yr, mth, dy, 0, 0, 0, 0, date.Location())
+	endOfDay := time.Date(yr, mth, dy, 23, 59, 59, 0, date.Location())
+	var timeStamps []TimeStamp
+	for i, _ := range configSchedule {
+		err := configSchedule[i].ParseTime()
+		if err != nil {
+			return timeStamps, err
+		}
+	}
+
+	// Dummy TimedColorTemperature to start the day. This is used
+	// to clamp the first times of the day (corner case where
+	// somebody writes "sunrise - large value", not to determine the
+	// light temperature or brightness).
+	previousConfig := &TimedColorTemperature{"", -1, -1, FixedTimePoint,
+		startOfDay, time.Duration(0)}
+	// realSun contains real sunrise/sunset times for the current day.
+        // adjustedSun will contain adjusted sunrise/sunset so that a sunrise- or
+	// sunset-based time never crosses a fixed time.
+	var adjustedSun, realSun [NumTimePointTypes]time.Time
+	realSun[Sunset] = sunset
+	realSun[Sunrise] = sunrise
+	adjustedSun = realSun
+	// First pass where we adjust the sunrise and sunset to later times if needed.
+	log.Warningf("⚙ Processing schedule")
+	for i, _ := range configSchedule {
+		if i-1 >= 0 {
+			previousConfig = &configSchedule[i-1]
+		}
+		previousTime := previousConfig.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset])
+		currentConfig := &configSchedule[i]
+		currentTime := currentConfig.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset])
+		log.Warningf("⚙ Processing %v (%v) %v (%v)", previousConfig, previousTime, currentConfig, currentTime)
+		if currentTime.After(previousTime) || currentTime.Equal(previousTime) {
+			continue
+		}
+		log.Warningf("⚙ Inversion %v %v", previousConfig, currentConfig)
+		// currentTime is before previousTime, we need to adjust things when possible.
+		if previousConfig.ParsedTimePointType == FixedTimePoint && currentConfig.ParsedTimePointType == FixedTimePoint {
+			return timeStamps, fmt.Errorf("Wrong order in schedule: %v appeared before %v", previousConfig.Time, currentConfig.Time)
+		}
+		if previousConfig.ParsedTimePointType != FixedTimePoint && currentConfig.ParsedTimePointType != FixedTimePoint {
+			// Inversion of two consecutive non-fixed time points.
+			// We only allow this when the first is sunrise-based and the second is sunset-based.
+			// This disallows mis-ordered time specs such as {"sunrise", "sunrise-10m"} or sunset appearing before sunrise.
+			if previousConfig.ParsedTimePointType != Sunrise || currentConfig.ParsedTimePointType != Sunset {
+				return timeStamps, fmt.Errorf("Wrong order in schedule: %v appeared before %v", previousConfig.Time, currentConfig.Time)
+			}
+		}
+		if currentConfig.ParsedTimePointType != FixedTimePoint {
+			// Adjust currentConfig by moving the (potentially already adjusted) sunset or
+			// sunrise to a later time.
+			offset := previousTime.Sub(currentTime) // Positive duration.
+			adjustedSun[currentConfig.ParsedTimePointType] = adjustedSun[currentConfig.ParsedTimePointType].Add(offset)
+			// One minute transition.
+			adjustedSun[currentConfig.ParsedTimePointType] = adjustedSun[currentConfig.ParsedTimePointType].Add(time.Minute)
+			log.Warningf("⚙ Adjusting sun %v to %v (real %v)", currentConfig.ParsedTimePointType, adjustedSun[currentConfig.ParsedTimePointType], realSun[currentConfig.ParsedTimePointType])
+		}
+	}
+
+	// Second pass (from later time points to earlier in the day) where we adjust sunrise
+	// and sunset to earlier times if needed.
+	// Dummy fixed time point to end the day. Only used to clamp sunrise/sunset, not for the color
+	// temperature nor brightness.
+	nextConfig := &TimedColorTemperature{"", -1, -1, FixedTimePoint,
+		endOfDay, time.Duration(0)}
+	for i := len(configSchedule) - 1; i >= 0; i-- {
+		if i+1 < len(configSchedule) {
+			nextConfig = &configSchedule[i+1]
+		}
+		nextTime := nextConfig.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset])
+		currentConfig := &configSchedule[i]
+		currentTime := currentConfig.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset])
+		if currentTime.Before(nextTime) || currentTime.Equal(nextTime) {
+			continue
+		}
+		// We need to adjust the sunset/sunrise to an earlier time.
+		if currentConfig.ParsedTimePointType != FixedTimePoint {
+			offset := nextTime.Sub(currentTime) // Negative duration
+			adjustedSun[currentConfig.ParsedTimePointType] = adjustedSun[currentConfig.ParsedTimePointType].Add(offset)
+			// One minute transition.
+			adjustedSun[currentConfig.ParsedTimePointType] = adjustedSun[currentConfig.ParsedTimePointType].Add(-time.Minute)
+		}
+	}
+
+	// Now, build the TimeStamps, check that the schedule is consistent, otherwise,
+	// return an error as it it no satisfiable.
+	// First, add the last time point from the previous day, to make sure we fully cover
+	// the current day.
+	// To guarantee that, we clamp the time from the last config in the
+	// previous day to one minute before midnight the current day (in some corner
+	// cases, or with "sunset + large value"), the last value of the previous day could
+	// end up after midnight.
+	lastConfig := configSchedule[len(configSchedule)-1]
+	startOfPreviousDay := startOfDay.AddDate(0, 0, -1)
+	previousDaySunrise := sunrise.AddDate(0, 0, -1)
+	previousDaySunset := sunset.AddDate(0, 0, -1)
+	firstTimeStamp := TimeStamp{lastConfig.AsTime(startOfPreviousDay, previousDaySunrise, previousDaySunset),
+		lastConfig.ColorTemperature, lastConfig.Brightness}
+	// TODO: check if the 1 minute is really useful (and if it is, fix the condition which is
+	// not full correct)
+	if firstTimeStamp.Time.After(startOfDay) || firstTimeStamp.Time.Equal(startOfDay) {
+		// TODO: log a warning.
+		firstTimeStamp.Time = startOfDay.Add(-time.Minute)
+	}
+	timeStamps = append(timeStamps, firstTimeStamp)
+	for _, config := range configSchedule {
+		timeStamps = append(timeStamps,
+			TimeStamp{config.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset]),
+				config.ColorTemperature, config.Brightness})
+	}
+	// Add first timestamp of the next day to make sure we cover the current day fully.
+	// Similarly to the last timestamp of the previous day, we clamp at midnight.
+	firstConfig := configSchedule[0]
+	startOfNextDay := startOfDay.AddDate(0, 0, 1)
+	// Approximations, probably good enough.
+	nextDaySunrise := sunrise.AddDate(0, 0, 1)
+	nextDaySunset := sunset.AddDate(0, 0, 1)
+	lastTimeStamp := TimeStamp{firstConfig.AsTime(startOfNextDay, nextDaySunrise, nextDaySunset),
+		firstConfig.ColorTemperature, firstConfig.Brightness}
+	if lastTimeStamp.Time.Before(startOfNextDay) {
+		// TODO: log a warning.
+		// Do we need one more minute?
+		lastTimeStamp.Time = startOfNextDay
+	}
+	timeStamps = append(timeStamps, lastTimeStamp)
+
+	// Check that there is no inversion left, otherwise, it means that schedule
+	// cannot be satisfied, even when moving sunrise/sunset.
+	for i, _ := range timeStamps {
+		if i+1 >= len(timeStamps) {
+			break
+		}
+		if timeStamps[i].Time.After(timeStamps[i+1].Time) {
+			// Note difference of one in timeStamps and configSchedule indices.
+			curConfig := configSchedule[(i+len(configSchedule)-1)%len(configSchedule)]
+			nextConfig := configSchedule[i%len(configSchedule)]
+			return timeStamps, fmt.Errorf(
+				"Schedule cannot be satisfied. With real sunrise %v, adjusted sunrise: %v, real sunset: %v, adjusted sunset: %v, we still get %v (%v) was still after %v (%v)",
+				realSun[Sunrise], adjustedSun[Sunrise], realSun[Sunset], adjustedSun[Sunset], curConfig.Time, timeStamps[i].Time, nextConfig, timeStamps[i+1].Time)
+		}
+	}
+	return timeStamps, nil
+}
+
+func (configuration *Configuration) lightScheduleForDay(
+	light int, date time.Time, sunStateCalculator SunStateCalculatorInterface) (Schedule, error) {
 	// initialize schedule with end of day
 	var schedule Schedule
 	yr, mth, dy := date.Date()
@@ -253,13 +434,27 @@ func (configuration *Configuration) lightScheduleForDay(light int, date time.Tim
 		}
 	}
 
+	// TODO: is there a check that a light is not associated with multiple schedules?
 	if !found {
 		return schedule, fmt.Errorf("Light %d is not associated with any schedule in configuration", light)
 	}
 
-	schedule.sunrise = TimeStamp{CalculateSunrise(date, configuration.Location.Latitude, configuration.Location.Longitude), lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
-	schedule.sunset = TimeStamp{CalculateSunset(date, configuration.Location.Latitude, configuration.Location.Longitude), lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
+	schedule.enableWhenLightsAppear = lightSchedule.EnableWhenLightsAppear
+	schedule.sunrise = TimeStamp{sunStateCalculator.CalculateSunrise(date, configuration.Location.Latitude, configuration.Location.Longitude), lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
+	schedule.sunset = TimeStamp{sunStateCalculator.CalculateSunset(date, configuration.Location.Latitude, configuration.Location.Longitude), lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
 
+	if len(lightSchedule.Schedule) > 0 {
+		// New-style schedules in the config. When present, we
+		// populate the new-style schedule `schedule.times`.
+		newScheduleTimes, err := ComputeNewStyleSchedule(lightSchedule.Schedule, schedule.sunrise.Time, schedule.sunset.Time, date)
+		if err != nil {
+			return schedule, err
+		}
+		schedule.times = newScheduleTimes
+		return schedule, nil
+	}
+
+	// Old-style schedule.
 	// Before sunrise candidates
 	schedule.beforeSunrise = []TimeStamp{}
 	for _, candidate := range lightSchedule.BeforeSunrise {
@@ -282,7 +477,6 @@ func (configuration *Configuration) lightScheduleForDay(light int, date time.Tim
 		schedule.afterSunset = append(schedule.afterSunset, timestamp)
 	}
 
-	schedule.enableWhenLightsAppear = lightSchedule.EnableWhenLightsAppear
 	return schedule, nil
 }
 
@@ -325,6 +519,71 @@ func (color *TimedColorTemperature) AsTimestamp(referenceTime time.Time) (TimeSt
 	targetTime := time.Date(yr, mth, day, t.Hour(), t.Minute(), t.Second(), 0, referenceTime.Location())
 
 	return TimeStamp{targetTime, color.ColorTemperature, color.Brightness}, nil
+}
+
+// This function parses the time field of a TimedColorTemperature coming from the config.
+// Accepted formats:
+// - HH:MM
+// - (sunrise|sunset) [ (+|-) NN m[inutes] ]
+// with obvious semantics.
+func (color *TimedColorTemperature) ParseTime() error {
+	re := regexp.MustCompile(`(?P<time>\d{1,2}:\d\d)|(?P<spec>(sunrise|sunset)(\s*(\+|-)\s*(\d+)\s*m.*){0,1})`)
+	matches := re.FindStringSubmatch(color.Time)
+	if len(matches[0]) == 0 {
+		return fmt.Errorf("Invalid timestamp %v", color.Time)
+	}
+	if len(matches[1]) > 0 {
+		// Time of the form hh:mm
+		layout := "15:04"
+		t, err := time.Parse(layout, color.Time)
+		if err != nil {
+			return fmt.Errorf("Failed to parse %v as a HH:MM time: %v", color.Time, err)
+		}
+		color.ParsedTimePointType = FixedTimePoint
+		color.ParsedTimeInDay = t
+		return nil
+	} else if len(matches[2]) > 0 {
+		// sunrise|sunset [(+|-) NN minutes].
+		if matches[3] == "sunrise" {
+			color.ParsedTimePointType = Sunrise
+		} else { // sunset
+			color.ParsedTimePointType = Sunset
+		}
+		if len(matches[4]) > 0 { // Offset to the sunrise/sunset.
+			minutes, err := strconv.Atoi(matches[6])
+			if err != nil {
+				return fmt.Errorf("Failed to parse sunrise/sunset offset %v: %v", matches[6], err)
+			}
+			if matches[5] == "+" {
+				color.ParsedOffset = time.Minute * time.Duration(minutes)
+			} else {
+				// minus
+				color.ParsedOffset = -time.Minute * time.Duration(minutes)
+			}
+		}
+		return nil
+	}
+	return fmt.Errorf("Internal error parsing time %v", color.Time)
+}
+
+// Given a TimedColorTemperature on which ParseTime() has been called (otherwise, we panic()),
+// returns the corresponding time.Time.
+func (color *TimedColorTemperature) AsTime(startOfDay time.Time, sunrise time.Time, sunset time.Time) time.Time {
+	switch color.ParsedTimePointType {
+	case FixedTimePoint:
+		{
+			yr, mth, dy := startOfDay.Date()
+			return time.Date(yr, mth, dy, color.ParsedTimeInDay.Hour(),
+				color.ParsedTimeInDay.Minute(), 0, 0, startOfDay.Location())
+			//, nil
+		}
+	case Sunrise:
+		return sunrise.Add(color.ParsedOffset) //, nil
+	case Sunset:
+		return sunset.Add(color.ParsedOffset) //, nil
+	default:
+		panic(fmt.Errorf("Internal error: TimedColorTemperature.ParseTime was not called %v", color))
+	}
 }
 
 func (configuration *Configuration) backup() error {

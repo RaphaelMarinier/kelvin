@@ -102,6 +102,20 @@ func (location *Geolocation) updateByIP() error {
 	return nil
 }
 
+type SunStateCalculatorInterface interface {
+	CalculateSunset(date time.Time, latitude float64, longitude float64) time.Time
+	CalculateSunrise(date time.Time, latitude float64, longitude float64) time.Time
+}
+
+type SunStateCalculator struct{}
+
+func (s *SunStateCalculator) CalculateSunset(date time.Time, latitude float64, longitude float64) time.Time {
+	return CalculateSunset(date, latitude, longitude)
+}
+func (s *SunStateCalculator) CalculateSunrise(date time.Time, latitude float64, longitude float64) time.Time {
+	return CalculateSunrise(date, latitude, longitude)
+}
+
 // CalculateSunset calculates the sunset for the given day based on
 // the configured position on earth.
 func CalculateSunset(date time.Time, latitude float64, longitude float64) time.Time {
