@@ -38,6 +38,10 @@ type Schedule struct {
 	sunset                 TimeStamp
 	afterSunset            []TimeStamp
 	enableWhenLightsAppear bool
+
+	// TODO (also update lightScheduleForDay)
+	// New-style schedule.
+	times []TimeStamp
 }
 
 func (schedule *Schedule) currentInterval(timestamp time.Time) (Interval, error) {
