@@ -56,20 +56,20 @@ type WebInterface struct {
 
 // LightSchedule represents the schedule for any given day for the associated lights.
 type LightSchedule struct {
-	Name                    string                  `json:"name"`
-	AssociatedDeviceIDs     []int                   `json:"associatedDeviceIDs"`
-	EnableWhenLightsAppear  bool                    `json:"enableWhenLightsAppear"`
+	Name                   string `json:"name"`
+	AssociatedDeviceIDs    []int  `json:"associatedDeviceIDs"`
+	EnableWhenLightsAppear bool   `json:"enableWhenLightsAppear"`
 	// Remove?
-	DefaultColorTemperature int                     `json:"defaultColorTemperature"`
+	DefaultColorTemperature int `json:"defaultColorTemperature"`
 	// Remove?
-	DefaultBrightness       int                     `json:"defaultBrightness"`
+	DefaultBrightness int `json:"defaultBrightness"`
 	// Remove?
-	BeforeSunrise           []TimedColorTemperature `json:"beforeSunrise"`
+	BeforeSunrise []TimedColorTemperature `json:"beforeSunrise"`
 	// Remove?
-	AfterSunset             []TimedColorTemperature `json:"afterSunset"`
+	AfterSunset []TimedColorTemperature `json:"afterSunset"`
 	// The time in json can be a time (HH:MM), sunrise, sunset, sunrise + NN minutes, sunset + NN minutes
 	// There could be a "clamps sunset/sunrise option" (default on).
-        Schedule               	[]TimedColorTemperature `json:"schedule"`
+	Schedule []TimedColorTemperature `json:"schedule"`
 }
 
 // TimedColorTemperature represents a light configuration which will be
@@ -263,7 +263,7 @@ func (configuration *Configuration) lightScheduleForDay(light int, date time.Tim
 		}
 	}
 
-        // TODO: is there a check that a light is not associated with multiple schedules?
+	// TODO: is there a check that a light is not associated with multiple schedules?
 	if !found {
 		return schedule, fmt.Errorf("Light %d is not associated with any schedule in configuration", light)
 	}
@@ -271,27 +271,27 @@ func (configuration *Configuration) lightScheduleForDay(light int, date time.Tim
 	schedule.sunrise = TimeStamp{CalculateSunrise(date, configuration.Location.Latitude, configuration.Location.Longitude), lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
 	schedule.sunset = TimeStamp{CalculateSunset(date, configuration.Location.Latitude, configuration.Location.Longitude), lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
 
-        if len(lightSchedule.Schedule) > 0 {
-          // New-style schedules.
-	  // TODO: add the first time of the previous day.
-	  for _, timedColorTemp := range lightSchedule.Schedule {
-	  // TODO: add last elemt of the previous day as first item in schedule.times.
-	    timestamp, err := timedColorTemp.AsTimestamp2(date, schedule.sunrise.Time, schedule.sunset.Time)
-	    if err != nil {
-	         log.Warningf("⚙ Found invalid configuration entry in schedule: %+v (Error: %v)", timedColorTemp, err)
-		 continue
-	    }
-	    // TODO: if timestamp.Time is <= previous time point, fix it.
-	    previousTime := schedule.times[len(schedule.times) - 1].Time
-	    if len(schedule.times) > 0 && timestamp.Time.Before(previousTime) {
-              // TODO: make it an error when the time inversion is due to static times.
-              log.Warningf("Found time inversion %v is before %v", timestamp.Time, previousTime)
-              timestamp.Time = previousTime.AddDate(0, 1, 0)
-            }
-	    schedule.times = append(schedule.times, timestamp)
-	    // TODO: for last elmt, add one from the next day.
-          }
-        }
+	if len(lightSchedule.Schedule) > 0 {
+		// New-style schedules.
+		// TODO: add the first time of the previous day.
+		for _, timedColorTemp := range lightSchedule.Schedule {
+			// TODO: add last elemt of the previous day as first item in schedule.times.
+			timestamp, err := timedColorTemp.AsTimestamp2(date, schedule.sunrise.Time, schedule.sunset.Time)
+			if err != nil {
+				log.Warningf("⚙ Found invalid configuration entry in schedule: %+v (Error: %v)", timedColorTemp, err)
+				continue
+			}
+			// TODO: if timestamp.Time is <= previous time point, fix it.
+			previousTime := schedule.times[len(schedule.times)-1].Time
+			if len(schedule.times) > 0 && timestamp.Time.Before(previousTime) {
+				// TODO: make it an error when the time inversion is due to static times.
+				log.Warningf("Found time inversion %v is before %v", timestamp.Time, previousTime)
+				timestamp.Time = previousTime.AddDate(0, 1, 0)
+			}
+			schedule.times = append(schedule.times, timestamp)
+			// TODO: for last elmt, add one from the next day.
+		}
+	}
 
 	// Before sunrise candidates
 	schedule.beforeSunrise = []TimeStamp{}
@@ -363,46 +363,46 @@ func (color *TimedColorTemperature) AsTimestamp(referenceTime time.Time) (TimeSt
 // referenceTime is an arbitrary time in the current day.
 func (color *TimedColorTemperature) AsTimestamp2(referenceTime time.Time, sunrise time.Time, sunset time.Time) (TimeStamp, error) {
 	re := regexp.MustCompile(`(?P<time>\d{1,2}:\d\d)|(?P<spec>(sunrise|sunset)(\s*(\+|-)\s*(\d+)\s*m.*){0,1})`)
-//	if err != nil {
-//		return TimeStamp{time.Now(), color.ColorTemperature, color.Brightness}, err 
-//        }
+	//	if err != nil {
+	//		return TimeStamp{time.Now(), color.ColorTemperature, color.Brightness}, err
+	//        }
 	matches := re.FindStringSubmatch(color.Time)
 	if len(matches[0]) == 0 {
-          return TimeStamp{time.Now(), color.ColorTemperature, color.Brightness}, fmt.Errorf("Invalid timestamp %v", color.Time)
+		return TimeStamp{time.Now(), color.ColorTemperature, color.Brightness}, fmt.Errorf("Invalid timestamp %v", color.Time)
 	}
 	var ret TimeStamp
 	if len(matches[1]) > 0 {
-          // Time of the form hh:mm
-          layout := "15:04"
-	  t, err := time.Parse(layout, color.Time)
-          if err != nil {
-		return TimeStamp{time.Now(), color.ColorTemperature, color.Brightness}, err
-	  }
-          yr, mth, day := referenceTime.Date()
-	  ret.Time = time.Date(yr, mth, day, t.Hour(), t.Minute(), t.Second(), 0, referenceTime.Location())
-        } else if len(matches[2]) > 0 {
-	  // sunrise|sunset [(+|-) NN minutes].
-	  if matches[3] == "sunrise" {
-            ret.Time = sunrise
-          } else {
-	    ret.Time = sunset
-	  }
-          if len(matches[4]) > 0 {
-	    minutes, err := strconv.Atoi(matches[6])
-	    if err != nil {
-    		return TimeStamp{time.Now(), color.ColorTemperature, color.Brightness}, err
-	    }
-	    if matches[5] == "+" {
-              ret.Time = ret.Time.AddDate(0, minutes, 0)
-            } else {
-              // minus
-	      ret.Time = ret.Time.AddDate(0, -minutes, 0)
-            }
-          }
-        }
+		// Time of the form hh:mm
+		layout := "15:04"
+		t, err := time.Parse(layout, color.Time)
+		if err != nil {
+			return TimeStamp{time.Now(), color.ColorTemperature, color.Brightness}, err
+		}
+		yr, mth, day := referenceTime.Date()
+		ret.Time = time.Date(yr, mth, day, t.Hour(), t.Minute(), t.Second(), 0, referenceTime.Location())
+	} else if len(matches[2]) > 0 {
+		// sunrise|sunset [(+|-) NN minutes].
+		if matches[3] == "sunrise" {
+			ret.Time = sunrise
+		} else {
+			ret.Time = sunset
+		}
+		if len(matches[4]) > 0 {
+			minutes, err := strconv.Atoi(matches[6])
+			if err != nil {
+				return TimeStamp{time.Now(), color.ColorTemperature, color.Brightness}, err
+			}
+			if matches[5] == "+" {
+				ret.Time = ret.Time.AddDate(0, minutes, 0)
+			} else {
+				// minus
+				ret.Time = ret.Time.AddDate(0, -minutes, 0)
+			}
+		}
+	}
 	ret.ColorTemperature = color.ColorTemperature
 	ret.Brightness = color.Brightness
-        return ret, nil
+	return ret, nil
 }
 
 func (configuration *Configuration) backup() error {
