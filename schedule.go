@@ -44,6 +44,7 @@ type Schedule struct {
 	times []TimeStamp
 }
 
+// TODO: change it so that we read from new-style schedule.times.
 func (schedule *Schedule) currentInterval(timestamp time.Time) (Interval, error) {
 	// check if timestamp respresents the current day
 	if timestamp.After(schedule.endOfDay) {
