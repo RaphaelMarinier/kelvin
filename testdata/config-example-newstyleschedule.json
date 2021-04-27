@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "bridge": {
+    "ip": "192.168.10.37",
+    "username": "lbCDGagZZ7JEYQX5iGxrjMIx2jIROgpXfsSjHmCv"
+  },
+  "location": {
+    "latitude": 53.5553,
+    "longitude": 9.995
+  },
+  "webinterface": {
+    "enabled": false,
+    "port": 8080
+  },
+  "schedules": [
+    {
+      "name": "default",
+      "associatedDeviceIDs": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "enableWhenLightsAppear": true,
+      "defaultColorTemperature": 2750,
+      "defaultBrightness": 100,
+      "schedule": [
+        {
+          "time": "4:00",
+          "colorTemperature": 2000,
+          "brightness": 60
+        },
+        {
+          "time": "sunrise",
+          "colorTemperature": 2700,
+          "brightness": 60
+        },
+        {
+          "time": "sunrise + 30m",
+          "colorTemperature": 5000,
+          "brightness": 100
+        },
+        {
+          "time": "sunset - 30m",
+          "colorTemperature": 5000,
+          "brightness": 100
+        },
+        {
+          "time": "sunset",
+          "colorTemperature": 2700,
+          "brightness": 80
+        },
+        {
+          "time": "22:00",
+          "colorTemperature": 2000,
+          "brightness": 70
+        }
+      ]
+    }
+  ]
+}
