@@ -45,7 +45,6 @@ type Schedule struct {
 	times []TimeStamp
 }
 
-// TODO: change it so that we read from new-style schedule.times.
 func (schedule *Schedule) currentInterval(timestamp time.Time) (Interval, error) {
 	if len(schedule.times) > 0 {
 		// New-style schedule.

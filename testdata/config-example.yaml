@@ -27,6 +27,7 @@ schedules:
   defaultColorTemperature: 2750
   enableWhenLightsAppear: true
   name: default
+  schedule: null
 version: 1
 webinterface:
   enabled: false

@@ -2,11 +2,13 @@ package main
 
 import (
 	"testing"
+	"time"
 )
 
 func TestReadOK(t *testing.T) {
 	correctfiles := []string{
 		"testdata/config-example.json",
+		"testdata/config-example-newstyleschedule.json",
 		"testdata/config-example.yaml",
 	}
 	for _, testFile := range correctfiles {
@@ -17,6 +19,18 @@ func TestReadOK(t *testing.T) {
 			t.Fatalf("Could not read correct configuration file : %v with error : %v", c.ConfigurationFile, err)
 		}
 	}
+}
+
+func TestLightScheduleForDay(t *testing.T) {
+		c := Configuration{}
+		c.ConfigurationFile = "testdata/config-example-newstyleschedule.json"
+		err := c.Read()
+		if err != nil {
+			t.Fatalf("Could not read correct configuration file : %v with error : %v", c.ConfigurationFile, err)
+		}
+	s, err := c.lightScheduleForDay(1, time.Now())
+	if err != nil { t.Fatalf("Got error %v", err) }
+  	t.Fatalf("Got schedule %v", s)
 }
 
 func TestReadError(t *testing.T) {
