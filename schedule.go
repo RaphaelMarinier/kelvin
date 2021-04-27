@@ -41,11 +41,26 @@ type Schedule struct {
 
 	// TODO (also update lightScheduleForDay)
 	// New-style schedule.
+	// Sorted from earliest to latest.
 	times []TimeStamp
 }
 
 // TODO: change it so that we read from new-style schedule.times.
 func (schedule *Schedule) currentInterval(timestamp time.Time) (Interval, error) {
+        if len(schedule.times) > 0 {
+           // New-style schedule.
+	   for i, after_candidate := range schedule.times {
+             if after_candidate.Time.After(timestamp) {
+               if i == 0 {
+      		return Interval{TimeStamp{time.Now(), 0, 0}, TimeStamp{time.Now(), 0, 0}}, fmt.Errorf("Today's schedule (%v) does not cover the current time %v", schedule.times, timestamp)
+               }
+	       // `timetamp` lies in interval [schedule.times[i - 1], schedule.times[i]]
+	       // TODO: do we need to fix dummy values as below?
+	       return Interval{schedule.times[i - 1], schedule.times[i]}, nil
+             }
+           }
+	   return Interval{TimeStamp{time.Now(), 0, 0}, TimeStamp{time.Now(), 0, 0}}, fmt.Errorf("Today's schedule (%v) does not cover the current time %v", schedule.times, timestamp)
+        }
 	// check if timestamp respresents the current day
 	if timestamp.After(schedule.endOfDay) {
 		return Interval{TimeStamp{time.Now(), 0, 0}, TimeStamp{time.Now(), 0, 0}}, fmt.Errorf("No current interval as the requested timestamp (%v) lays after the end of the current schedule (%v)", timestamp, schedule.endOfDay)
