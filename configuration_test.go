@@ -22,15 +22,19 @@ func TestReadOK(t *testing.T) {
 }
 
 func TestLightScheduleForDay(t *testing.T) {
-		c := Configuration{}
-		c.ConfigurationFile = "testdata/config-example-newstyleschedule.json"
-		err := c.Read()
-		if err != nil {
-			t.Fatalf("Could not read correct configuration file : %v with error : %v", c.ConfigurationFile, err)
-		}
+	c := Configuration{}
+	c.ConfigurationFile = "testdata/config-example-newstyleschedule.json"
+	err := c.Read()
+	if err != nil {
+		t.Fatalf("Could not read correct configuration file : %v with error : %v", c.ConfigurationFile, err)
+	}
 	s, err := c.lightScheduleForDay(1, time.Now())
-	if err != nil { t.Fatalf("Got error %v", err) }
-  	t.Fatalf("Got schedule %v", s)
+	if err != nil {
+		t.Fatalf("Got error %v", err)
+	}
+	
+	// TODO: check schedule, under different mock sunset/sunrise.
+	t.Fatalf("Got schedule %v", s)
 }
 
 func TestReadError(t *testing.T) {
