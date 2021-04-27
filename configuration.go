@@ -283,13 +283,11 @@ func (configuration *Configuration) lightScheduleForDay(light int, date time.Tim
 
 		schedule.times = append(schedule.times, previous_day_last_timestamp)
 		for _, timedColorTemp := range lightSchedule.Schedule {
-			// TODO: add last elemt of the previous day as first item in schedule.times.
 			timestamp, err := timedColorTemp.AsTimestamp2(date, schedule.sunrise.Time, schedule.sunset.Time)
 			if err != nil {
 				log.Warningf("⚙ Found invalid configuration entry in schedule: %+v (Error: %v)", timedColorTemp, err)
 				continue
 			}
-			// TODO: if timestamp.Time is <= previous time point, fix it.
 			previousTime := schedule.times[len(schedule.times)-1].Time
 			// TODO: double-check condition,
 			if len(schedule.times) > 0 && timestamp.Time.Before(previousTime) {
@@ -299,7 +297,6 @@ func (configuration *Configuration) lightScheduleForDay(light int, date time.Tim
 			}
 			log.Warningf("Adding timepoint %v", timestamp)
 			schedule.times = append(schedule.times, timestamp)
-			// TODO: for last elmt, add one from the next day.
 		}
 		next_day_first_timestamp, err := lightSchedule.Schedule[0].AsTimestamp2(date.AddDate(0, 0, 1), schedule.sunrise.Time, schedule.sunset.Time)
 		if err != nil {
@@ -378,6 +375,13 @@ func (color *TimedColorTemperature) AsTimestamp(referenceTime time.Time) (TimeSt
 }
 
 // referenceTime is an arbitrary time in the current day.
+// This function parses the time field of a TimedColorTemperature coming from the config.
+// Accepted formats:
+// HH:MM
+// (sunrise|sunset) [ (+|-) NN m[inutes] ]
+// With obvious semantics.
+// The returned time corresponds to the day from `referenceTime` and time in day computed from
+// parsing `TimedColortemperature`.
 func (color *TimedColorTemperature) AsTimestamp2(referenceTime time.Time, sunrise time.Time, sunset time.Time) (TimeStamp, error) {
 	re := regexp.MustCompile(`(?P<time>\d{1,2}:\d\d)|(?P<spec>(sunrise|sunset)(\s*(\+|-)\s*(\d+)\s*m.*){0,1})`)
 	//	if err != nil {
