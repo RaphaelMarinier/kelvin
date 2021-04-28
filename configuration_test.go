@@ -75,6 +75,10 @@ func TestLightScheduleForDay(t *testing.T) {
 				i, s.times[i], expectedTime)
 		}
 	}
+
+// TODO: test case when sunrise moves around, same for sunset.
+// TODO: add logging.
+
 }
 
 func TestReadError(t *testing.T) {
