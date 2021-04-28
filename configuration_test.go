@@ -51,9 +51,6 @@ func TestLightScheduleForDay(t *testing.T) {
 		t.Fatalf("Got error %v", err)
 	}
 
-	// TODO: check schedule, under different mock sunset/sunrise.
-	//	[{2021-04-27 22:00:00 +0200 CEST 2000 70} {2021-04-28 04:00:00 +0200 CEST 2000 60} {2021-04-28 06:40:11 +0200 CEST 2700 60} {2021-04-28 07:10:11 +0200 CEST 5000 100} {2021-04-28 19:25:44 +0200 CEST 5000 100} {2021-04-28 19:55:44 +0200 CEST 2700 80} {2021-04-28 22:00:00 +0200 CEST 2000 70} {2021-04-29 04:00:00 +0200 CEST 2000 60}]
-
 	parseTime := func(t string) time.Time {
 		parsed, _ := time.Parse("2006-01-02 15:04:05", t)
 		return parsed
