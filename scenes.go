@@ -54,7 +54,8 @@ func updateSceneForSchedule(scene *hue.Scene, lightSchedule LightSchedule) {
 
 	// Updating light states
 	light := lightSchedule.AssociatedDeviceIDs[0]
-	schedule, err := configuration.lightScheduleForDay(light, time.Now())
+	sunCalculator := &SunStateCalculator{}
+	schedule, err := configuration.lightScheduleForDay(light, time.Now(), sunCalculator)
 	if err != nil {
 		log.Warningf("🎨 %v", err)
 		return

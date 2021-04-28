@@ -32,16 +32,20 @@ import (
 // Kelvin will calculate all light states based on the intervals
 // between this timestamps.
 type Schedule struct {
-	endOfDay               time.Time
-	beforeSunrise          []TimeStamp
-	sunrise                TimeStamp
-	sunset                 TimeStamp
-	afterSunset            []TimeStamp
 	enableWhenLightsAppear bool
 
-	// TODO (also update lightScheduleForDay)
-	// New-style schedule.
-	// Sorted from earliest to latest.
+	// Old-style schedule.
+	endOfDay      time.Time
+	beforeSunrise []TimeStamp
+	sunrise       TimeStamp
+	sunset        TimeStamp
+	afterSunset   []TimeStamp
+
+	// New-style schedule. When provided, the old-style schedule is ignored.
+	// List of timestamps (with color temperature and brightness), ordered in increasing time order.
+	// This covers the current day: the first timestamp is before the
+	// beginning of the current day, and the last timestamp is after the end
+	// of the current day.
 	times []TimeStamp
 }
 
@@ -60,6 +64,7 @@ func (schedule *Schedule) currentInterval(timestamp time.Time) (Interval, error)
 		}
 		return Interval{TimeStamp{time.Now(), 0, 0}, TimeStamp{time.Now(), 0, 0}}, fmt.Errorf("Today's schedule (%v) does not cover the current time %v", schedule.times, timestamp)
 	}
+	// Old-style schedule.
 	// check if timestamp respresents the current day
 	if timestamp.After(schedule.endOfDay) {
 		return Interval{TimeStamp{time.Now(), 0, 0}, TimeStamp{time.Now(), 0, 0}}, fmt.Errorf("No current interval as the requested timestamp (%v) lays after the end of the current schedule (%v)", timestamp, schedule.endOfDay)

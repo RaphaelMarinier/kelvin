@@ -67,8 +67,9 @@ type LightSchedule struct {
 	BeforeSunrise []TimedColorTemperature `json:"beforeSunrise"`
 	// Remove?
 	AfterSunset []TimedColorTemperature `json:"afterSunset"`
-	// The time in json can be a time (HH:MM), sunrise, sunset, sunrise + NN minutes, sunset + NN minutes
-	// There could be a "clamps sunset/sunrise option" (default on).
+	// New-style schedule.
+	// The time in json can be a time (HH:MM), sunrise, sunset, sunrise +- NN minutes,
+	// sunset +- NN minutes
 	Schedule []TimedColorTemperature `json:"schedule"`
 }
 
@@ -247,7 +248,8 @@ func (configuration *Configuration) Read() error {
 }
 
 // TODO.
-func (configuration *Configuration) lightScheduleForDay(light int, date time.Time) (Schedule, error) {
+func (configuration *Configuration) lightScheduleForDay(
+	light int, date time.Time, sunStateCalculator SunStateCalculatorInterface) (Schedule, error) {
 	// initialize schedule with end of day
 	var schedule Schedule
 	yr, mth, dy := date.Date()
@@ -268,8 +270,8 @@ func (configuration *Configuration) lightScheduleForDay(light int, date time.Tim
 		return schedule, fmt.Errorf("Light %d is not associated with any schedule in configuration", light)
 	}
 
-	schedule.sunrise = TimeStamp{CalculateSunrise(date, configuration.Location.Latitude, configuration.Location.Longitude), lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
-	schedule.sunset = TimeStamp{CalculateSunset(date, configuration.Location.Latitude, configuration.Location.Longitude), lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
+	schedule.sunrise = TimeStamp{sunStateCalculator.CalculateSunrise(date, configuration.Location.Latitude, configuration.Location.Longitude), lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
+	schedule.sunset = TimeStamp{sunStateCalculator.CalculateSunset(date, configuration.Location.Latitude, configuration.Location.Longitude), lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
 
 	if len(lightSchedule.Schedule) > 0 {
 		// New-style schedules in the json config. When present, we populare the new-style schedule `schedule.times`.
@@ -405,7 +407,7 @@ func (color *TimedColorTemperature) AsTimestamp2(referenceTime time.Time, sunris
 		// sunrise|sunset [(+|-) NN minutes].
 		if matches[3] == "sunrise" {
 			ret.Time = sunrise
-		} else {
+		} else { // sunset
 			ret.Time = sunset
 		}
 		if len(matches[4]) > 0 {
