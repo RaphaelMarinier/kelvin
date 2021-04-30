@@ -34,6 +34,11 @@ func (calculator *MockSunStateCalculator) CalculateSunrise(date time.Time, latit
 	return calculator.MockSunrise
 }
 
+func parseTime(t string) time.Time {
+	parsed, _ := time.Parse("2006-01-02 15:04:05", t)
+	return parsed
+}
+
 func TestLightScheduleForDay(t *testing.T) {
 	c := Configuration{}
 	c.ConfigurationFile = "testdata/config-example-newstyleschedule.json"
@@ -49,11 +54,6 @@ func TestLightScheduleForDay(t *testing.T) {
 	s, err := c.lightScheduleForDay(1, time.Date(2021, 4, 28, 0, 0, 1, 0, location), calculator)
 	if err != nil {
 		t.Fatalf("Got error %v", err)
-	}
-
-	parseTime := func(t string) time.Time {
-		parsed, _ := time.Parse("2006-01-02 15:04:05", t)
-		return parsed
 	}
 
 	expectedTimes := []TimeStamp{
@@ -75,11 +75,47 @@ func TestLightScheduleForDay(t *testing.T) {
 				i, s.times[i], expectedTime)
 		}
 	}
+}
+
+func TestComputeNewStyleScheduleEasy(t *testing.T) {
+	// TODO.
+	configSchedule := []TimedColorTemperature{
+		{"8:00", 2700, 80},
+		{"sunrise", 3000, 90},
+		{"sunrise + 30m", 5000, 100},
+		{"10:00", 6000, 100},
+	}
+	location := time.UTC
+	date := time.Date(2021, 4, 28, 0, 0, 1, 0, location)
+	sunrise := time.Date(2021, 4, 28, 8, 30, 0, 0, location)
+	sunset := time.Date(2021, 4, 28, 19, 30, 0, 0, location)
+	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
+	if err != nil {
+		t.Fatalf("Got error %v", err)
+	}
+	expectedTimes := []TimeStamp{
+		// Previous day.
+		TimeStamp{parseTime("2021-04-27 10:00:00"), 6000, 100},
+		TimeStamp{parseTime("2021-04-28 08:00:00"), 2700, 80},
+		// Sunrise.
+		TimeStamp{parseTime("2021-04-28 08:30:00"), 3000, 90},
+		// Sunrise + 30m.
+		TimeStamp{parseTime("2021-04-28 09:00:00"), 5000, 100},
+		TimeStamp{parseTime("2021-04-28 10:00:00"), 6000, 100},
+		// Next day.
+		TimeStamp{parseTime("2021-04-29 08:00:00"), 2700, 80},
+	}
+	for i, expectedTime := range expectedTimes {
+		if expectedTime != schedule[i] {
+			t.Fatalf("Got unexpected timestamp at position %v. Got %v expected %v.\nFull schedule obtained: %v, full schedule expected: %v",
+				i, schedule[i], expectedTime, schedule, expectedTimes)
+		}
+	}
+
+}
 
 // TODO: test case when sunrise moves around, same for sunset.
 // TODO: add logging.
-
-}
 
 func TestReadError(t *testing.T) {
 	wrongfiles := []string{

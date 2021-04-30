@@ -246,6 +246,10 @@ func (configuration *Configuration) Read() error {
 	return nil
 }
 
+// TODO: the clamping logic will be key. need to scan the fixed times and see what sunrise/sunset needs to be clamped. Need to preserve { 8:00, sunrise, sunrise + 10m} when sunrise is before 7:00. We'd want to clamp into {8:00, 8:01, 8:11}. Difficulty is that we should not convert the config time to a timestamp directly, but keep it symbolic (SUNRISE, offset) and global sunrise time.
+// Scan and accumulate constraints on sunset and sunrise, and check whether they can be solved.
+// One difficulty: do we want the constraints to adjust the sunrise time globally
+
 func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature, sunrise time.Time, sunset time.Time, date time.Time) ([]TimeStamp, error) {
 	var timeStamps []TimeStamp
 	// First, add the last time point from the previous day, to make sure we fully cover
