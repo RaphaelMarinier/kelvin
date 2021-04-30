@@ -151,6 +151,77 @@ func TestComputeNewStyleScheduleEasy2(t *testing.T) {
 	}
 }
 
+// Failing, as expected since the main code is not ready.
+func TestComputeNewStyleScheduleClampedSunrise(t *testing.T) {
+	configSchedule := []TimedColorTemperature{
+		{"8:00", 2700, 80},
+		{"sunrise", 3000, 90},
+		{"sunrise + 30m", 5000, 100},
+		{"22:00", 2000, 70},
+	}
+	date := parseTime("2021-04-28 00:01:00")
+	// This is before the first time in the config.
+	sunrise := parseTime("2021-04-28 07:00:00")
+	sunset := parseTime("2021-04-28 19:30:00")
+	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
+	if err != nil {
+		t.Fatalf("Got error %v", err)
+	}
+	expectedTimes := []TimeStamp{
+		// Previous day.
+		TimeStamp{parseTime("2021-04-27 22:00:00"), 2000, 70},
+		TimeStamp{parseTime("2021-04-28 08:00:00"), 2700, 80},
+		// Clamped sunrise.
+		TimeStamp{parseTime("2021-04-28 08:01:00"), 3000, 90},
+		// Clamped sunrise + 30m.
+		TimeStamp{parseTime("2021-04-28 08:31:00"), 5000, 100},
+		TimeStamp{parseTime("2021-04-28 22:00:00"), 2000, 70},
+		// Next day
+		TimeStamp{parseTime("2021-04-29 08:00:00"), 2700, 80},
+	}
+	for i, expectedTime := range expectedTimes {
+		if expectedTime != schedule[i] {
+			t.Fatalf("Got unexpected timestamp at position %v. Got %v expected %v.\nFull schedule obtained: %v, full schedule expected: %v",
+				i, schedule[i], expectedTime, schedule, expectedTimes)
+		}
+	}
+}
+// Failing, as expected since the main code is not ready.
+func TestComputeNewStyleScheduleClampedSunset(t *testing.T) {
+	configSchedule := []TimedColorTemperature{
+		{"8:00", 5000, 100},
+		{"sunset", 4000, 90},
+		{"sunset + 30m", 2000, 90},
+		{"22:00", 2000, 70},
+	}
+	date := parseTime("2021-04-28 00:01:00")
+	sunrise := parseTime("2021-04-28 07:00:00")
+	// This makes "sunset + 30m" be after the last time in the config.
+	sunset := parseTime("2021-04-28 21:50:00")
+	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
+	if err != nil {
+		t.Fatalf("Got error %v", err)
+	}
+	expectedTimes := []TimeStamp{
+		// Previous day.
+		TimeStamp{parseTime("2021-04-27 22:00:00"), 2000, 70},
+		TimeStamp{parseTime("2021-04-28 08:00:00"), 5000, 100},
+		// Clamped sunset.
+		TimeStamp{parseTime("2021-04-28 21:29:00"), 4000, 90},
+		// Clamped sunset + 30m.
+		TimeStamp{parseTime("2021-04-28 21:59:00"), 2000, 90},
+		TimeStamp{parseTime("2021-04-28 22:00:00"), 2000, 70},
+		// Next day
+		TimeStamp{parseTime("2021-04-29 08:00:00"), 5000, 100},
+	}
+	for i, expectedTime := range expectedTimes {
+		if expectedTime != schedule[i] {
+			t.Fatalf("Got unexpected timestamp at position %v. Got %v expected %v.\nFull schedule obtained: %v, full schedule expected: %v",
+				i, schedule[i], expectedTime, schedule, expectedTimes)
+		}
+	}
+}
+
 // TODO: test case when sunrise moves around, same for sunset.
 // TODO: add logging.
 
