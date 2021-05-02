@@ -293,13 +293,19 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 	realSun[Sunrise] = sunrise
 	adjustedSun = realSun
 	// First pass where we adjust the sunrise and sunset to later times if needed.
+	log.Warningf("⚙ Processing schedule")
 	for i, _ := range configSchedule {
+		if i-1 >= 0 {
+			previousConfig = &configSchedule[i-1]
+		}
 		previousTime := previousConfig.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset])
 		currentConfig := &configSchedule[i]
 		currentTime := currentConfig.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset])
+		log.Warningf("⚙ Processing %v (%v) %v (%v)", previousConfig, previousTime, currentConfig, currentTime)
 		if currentTime.After(previousTime) || currentTime.Equal(previousTime) {
 			continue
 		}
+		log.Warningf("⚙ Inversion %v %v", previousConfig, currentConfig)
 		// currentTime is before previousTime, we need to adjust things when possible.
 		if previousConfig.ParsedTimePointType == FixedTimePoint && currentConfig.ParsedTimePointType == FixedTimePoint {
 			return timeStamps, fmt.Errorf("Wrong order in schedule: %v appeared before %v", previousConfig.Time, currentConfig.Time)
@@ -319,8 +325,8 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 			adjustedSun[currentConfig.ParsedTimePointType] = adjustedSun[currentConfig.ParsedTimePointType].Add(offset)
 			// One minute transition.
 			adjustedSun[currentConfig.ParsedTimePointType] = adjustedSun[currentConfig.ParsedTimePointType].Add(time.Minute)
+			log.Warningf("⚙ Adjusting sun %v to %v (real %v)", currentConfig.ParsedTimePointType, adjustedSun[currentConfig.ParsedTimePointType], realSun[currentConfig.ParsedTimePointType])
 		}
-		previousConfig = currentConfig
 	}
 
 	// Second pass (from later time points to earlier in the day) where we adjust sunrise
@@ -330,6 +336,9 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 	nextConfig := &TimedColorTemperature{"", -1, -1, FixedTimePoint,
 		endOfDay, time.Duration(0)}
 	for i := len(configSchedule) - 1; i >= 0; i-- {
+		if i+1 < len(configSchedule) {
+			nextConfig = &configSchedule[i+1]
+		}
 		nextTime := nextConfig.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset])
 		currentConfig := &configSchedule[i]
 		currentTime := currentConfig.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset])
@@ -343,7 +352,6 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 			// One minute transition.
 			adjustedSun[currentConfig.ParsedTimePointType] = adjustedSun[currentConfig.ParsedTimePointType].Add(-time.Minute)
 		}
-		nextConfig = currentConfig
 	}
 
 	// Now, build the TimeStamps, check that the schedule is consistent, otherwise,

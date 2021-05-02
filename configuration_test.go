@@ -265,7 +265,7 @@ func TestComputeNewStyleScheduleComplexClamping(t *testing.T) {
 		{Time: "8:00", ColorTemperature: 2700, Brightness: 80},
 		{Time: "sunrise", ColorTemperature: 3000, Brightness: 90},
 		{Time: "sunrise + 180m", ColorTemperature: 5000, Brightness: 100},
-                {Time: "sunset - 180m", ColorTemperature: 3000, Brightness: 90},
+		{Time: "sunset - 180m", ColorTemperature: 3000, Brightness: 90},
 		{Time: "sunset + 180m", ColorTemperature: 5000, Brightness: 100},
 		{Time: "18:00", ColorTemperature: 2000, Brightness: 70},
 	}
