@@ -35,7 +35,7 @@ func (calculator *MockSunStateCalculator) CalculateSunrise(date time.Time, latit
 }
 
 func parseTime(t string) time.Time {
-	parsed, _ := time.Parse("2006-01-02 15:04:05", t)
+	parsed, _ := time.Parse("2006-01-02 15:04", t)
 	return parsed
 }
 
@@ -57,14 +57,14 @@ func TestLightScheduleForDay(t *testing.T) {
 	}
 
 	expectedTimes := []TimeStamp{
-		TimeStamp{parseTime("2021-04-27 22:00:00"), 2000, 70},
-		TimeStamp{parseTime("2021-04-28 04:00:00"), 2000, 60},
-		TimeStamp{parseTime("2021-04-28 07:30:00"), 2700, 60},
-		TimeStamp{parseTime("2021-04-28 08:00:00"), 5000, 100},
-		TimeStamp{parseTime("2021-04-28 19:30:00"), 5000, 100},
-		TimeStamp{parseTime("2021-04-28 20:00:00"), 2700, 80},
-		TimeStamp{parseTime("2021-04-28 22:00:00"), 2000, 70},
-		TimeStamp{parseTime("2021-04-29 04:00:00"), 2000, 60}}
+		TimeStamp{parseTime("2021-04-27 22:00"), 2000, 70},
+		TimeStamp{parseTime("2021-04-28 04:00"), 2000, 60},
+		TimeStamp{parseTime("2021-04-28 07:30"), 2700, 60},
+		TimeStamp{parseTime("2021-04-28 08:00"), 5000, 100},
+		TimeStamp{parseTime("2021-04-28 19:30"), 5000, 100},
+		TimeStamp{parseTime("2021-04-28 20:00"), 2700, 80},
+		TimeStamp{parseTime("2021-04-28 22:00"), 2000, 70},
+		TimeStamp{parseTime("2021-04-29 04:00"), 2000, 60}}
 
 	if len(s.times) != len(expectedTimes) {
 		t.Fatalf("Got schedule with unexpected length. Got %v expected %v", s.times, expectedTimes)
@@ -84,24 +84,24 @@ func TestComputeNewStyleScheduleEasy(t *testing.T) {
 		{Time: "sunrise + 30m", ColorTemperature: 5000, Brightness: 100},
 		{Time: "10:00", ColorTemperature: 6000, Brightness: 100},
 	}
-	date := parseTime("2021-04-28 00:01:00")
-	sunrise := parseTime("2021-04-28 08:30:00")
-	sunset := parseTime("2021-04-28 19:30:00")
+	date := parseTime("2021-04-28 00:01")
+	sunrise := parseTime("2021-04-28 08:30")
+	sunset := parseTime("2021-04-28 19:30")
 	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
 	if err != nil {
 		t.Fatalf("Got error %v", err)
 	}
 	expectedTimes := []TimeStamp{
 		// Previous day.
-		TimeStamp{parseTime("2021-04-27 10:00:00"), 6000, 100},
-		TimeStamp{parseTime("2021-04-28 08:00:00"), 2700, 80},
+		TimeStamp{parseTime("2021-04-27 10:00"), 6000, 100},
+		TimeStamp{parseTime("2021-04-28 08:00"), 2700, 80},
 		// Sunrise.
-		TimeStamp{parseTime("2021-04-28 08:30:00"), 3000, 90},
+		TimeStamp{parseTime("2021-04-28 08:30"), 3000, 90},
 		// Sunrise + 30m.
-		TimeStamp{parseTime("2021-04-28 09:00:00"), 5000, 100},
-		TimeStamp{parseTime("2021-04-28 10:00:00"), 6000, 100},
+		TimeStamp{parseTime("2021-04-28 09:00"), 5000, 100},
+		TimeStamp{parseTime("2021-04-28 10:00"), 6000, 100},
 		// Next day.
-		TimeStamp{parseTime("2021-04-29 08:00:00"), 2700, 80},
+		TimeStamp{parseTime("2021-04-29 08:00"), 2700, 80},
 	}
 	for i, expectedTime := range expectedTimes {
 		if expectedTime != schedule[i] {
@@ -120,28 +120,28 @@ func TestComputeNewStyleScheduleEasy2(t *testing.T) {
 		{Time: "sunset + 30m", ColorTemperature: 2000, Brightness: 80},
 		{Time: "22:00", ColorTemperature: 2000, Brightness: 70},
 	}
-	date := parseTime("2021-04-28 00:01:00")
-	sunrise := parseTime("2021-04-28 08:30:00")
-	sunset := parseTime("2021-04-28 19:30:00")
+	date := parseTime("2021-04-28 00:01")
+	sunrise := parseTime("2021-04-28 08:30")
+	sunset := parseTime("2021-04-28 19:30")
 	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
 	if err != nil {
 		t.Fatalf("Got error %v", err)
 	}
 	expectedTimes := []TimeStamp{
 		// Previous day.
-		TimeStamp{parseTime("2021-04-27 22:00:00"), 2000, 70},
-		TimeStamp{parseTime("2021-04-28 08:00:00"), 2700, 80},
+		TimeStamp{parseTime("2021-04-27 22:00"), 2000, 70},
+		TimeStamp{parseTime("2021-04-28 08:00"), 2700, 80},
 		// Sunrise.
-		TimeStamp{parseTime("2021-04-28 08:30:00"), 3000, 90},
+		TimeStamp{parseTime("2021-04-28 08:30"), 3000, 90},
 		// Sunrise + 30m.
-		TimeStamp{parseTime("2021-04-28 09:00:00"), 5000, 100},
+		TimeStamp{parseTime("2021-04-28 09:00"), 5000, 100},
 		// Sunset
-		TimeStamp{parseTime("2021-04-28 19:30:00"), 3000, 90},
+		TimeStamp{parseTime("2021-04-28 19:30"), 3000, 90},
 		// Sunset + 30m
-		TimeStamp{parseTime("2021-04-28 20:00:00"), 2000, 80},
-		TimeStamp{parseTime("2021-04-28 22:00:00"), 2000, 70},
+		TimeStamp{parseTime("2021-04-28 20:00"), 2000, 80},
+		TimeStamp{parseTime("2021-04-28 22:00"), 2000, 70},
 		// Next day
-		TimeStamp{parseTime("2021-04-29 08:00:00"), 2700, 80},
+		TimeStamp{parseTime("2021-04-29 08:00"), 2700, 80},
 	}
 	for i, expectedTime := range expectedTimes {
 		if expectedTime != schedule[i] {
@@ -159,25 +159,25 @@ func TestComputeNewStyleScheduleClampedSunrise(t *testing.T) {
 		{Time: "sunrise + 30m", ColorTemperature: 5000, Brightness: 100},
 		{Time: "22:00", ColorTemperature: 2000, Brightness: 70},
 	}
-	date := parseTime("2021-04-28 00:01:00")
+	date := parseTime("2021-04-28 00:01")
 	// This is before the first time in the config.
-	sunrise := parseTime("2021-04-28 07:00:00")
-	sunset := parseTime("2021-04-28 19:30:00")
+	sunrise := parseTime("2021-04-28 07:00")
+	sunset := parseTime("2021-04-28 19:30")
 	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
 	if err != nil {
 		t.Fatalf("Got error %v", err)
 	}
 	expectedTimes := []TimeStamp{
 		// Previous day.
-		TimeStamp{parseTime("2021-04-27 22:00:00"), 2000, 70},
-		TimeStamp{parseTime("2021-04-28 08:00:00"), 2700, 80},
+		TimeStamp{parseTime("2021-04-27 22:00"), 2000, 70},
+		TimeStamp{parseTime("2021-04-28 08:00"), 2700, 80},
 		// Clamped sunrise.
-		TimeStamp{parseTime("2021-04-28 08:01:00"), 3000, 90},
+		TimeStamp{parseTime("2021-04-28 08:01"), 3000, 90},
 		// Clamped sunrise + 30m.
-		TimeStamp{parseTime("2021-04-28 08:31:00"), 5000, 100},
-		TimeStamp{parseTime("2021-04-28 22:00:00"), 2000, 70},
+		TimeStamp{parseTime("2021-04-28 08:31"), 5000, 100},
+		TimeStamp{parseTime("2021-04-28 22:00"), 2000, 70},
 		// Next day
-		TimeStamp{parseTime("2021-04-29 08:00:00"), 2700, 80},
+		TimeStamp{parseTime("2021-04-29 08:00"), 2700, 80},
 	}
 	for i, expectedTime := range expectedTimes {
 		if expectedTime != schedule[i] {
@@ -195,25 +195,25 @@ func TestComputeNewStyleScheduleClampedSunset(t *testing.T) {
 		{Time: "sunset + 30m", ColorTemperature: 2000, Brightness: 90},
 		{Time: "22:00", ColorTemperature: 2000, Brightness: 70},
 	}
-	date := parseTime("2021-04-28 00:01:00")
-	sunrise := parseTime("2021-04-28 07:00:00")
+	date := parseTime("2021-04-28 00:01")
+	sunrise := parseTime("2021-04-28 07:00")
 	// This makes "sunset + 30m" be after the last time in the config.
-	sunset := parseTime("2021-04-28 21:50:00")
+	sunset := parseTime("2021-04-28 21:50")
 	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
 	if err != nil {
 		t.Fatalf("Got error %v", err)
 	}
 	expectedTimes := []TimeStamp{
 		// Previous day.
-		TimeStamp{parseTime("2021-04-27 22:00:00"), 2000, 70},
-		TimeStamp{parseTime("2021-04-28 08:00:00"), 5000, 100},
+		TimeStamp{parseTime("2021-04-27 22:00"), 2000, 70},
+		TimeStamp{parseTime("2021-04-28 08:00"), 5000, 100},
 		// Clamped sunset.
-		TimeStamp{parseTime("2021-04-28 21:29:00"), 4000, 90},
+		TimeStamp{parseTime("2021-04-28 21:29"), 4000, 90},
 		// Clamped sunset + 30m.
-		TimeStamp{parseTime("2021-04-28 21:59:00"), 2000, 90},
-		TimeStamp{parseTime("2021-04-28 22:00:00"), 2000, 70},
+		TimeStamp{parseTime("2021-04-28 21:59"), 2000, 90},
+		TimeStamp{parseTime("2021-04-28 22:00"), 2000, 70},
 		// Next day
-		TimeStamp{parseTime("2021-04-29 08:00:00"), 5000, 100},
+		TimeStamp{parseTime("2021-04-29 08:00"), 5000, 100},
 	}
 	for i, expectedTime := range expectedTimes {
 		if expectedTime != schedule[i] {
@@ -231,9 +231,9 @@ func TestComputeNewStyleScheduleImpossibleSunriseClamping(t *testing.T) {
 		{Time: "sunrise + 30m", ColorTemperature: 5000, Brightness: 100},
 		{Time: "08:20", ColorTemperature: 2000, Brightness: 70},
 	}
-	date := parseTime("2021-04-28 00:01:00")
-	sunrise := parseTime("2021-04-28 07:00:00")
-	sunset := parseTime("2021-04-28 19:30:00")
+	date := parseTime("2021-04-28 00:01")
+	sunrise := parseTime("2021-04-28 07:00")
+	sunset := parseTime("2021-04-28 19:30")
 	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
 	if err == nil {
 		t.Fatalf("Expected error, got schedule %v", schedule)
@@ -248,9 +248,9 @@ func TestComputeNewStyleScheduleImpossibleSunsetClamping(t *testing.T) {
 		{Time: "sunset + 30m", ColorTemperature: 5000, Brightness: 100},
 		{Time: "20:00", ColorTemperature: 2000, Brightness: 70},
 	}
-	date := parseTime("2021-04-28 00:01:00")
-	sunrise := parseTime("2021-04-28 07:00:00")
-	sunset := parseTime("2021-04-28 19:30:00")
+	date := parseTime("2021-04-28 00:01")
+	sunrise := parseTime("2021-04-28 07:00")
+	sunset := parseTime("2021-04-28 19:30")
 	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
 	if err == nil {
 		t.Fatalf("Expected error, got schedule %v", schedule)
@@ -266,29 +266,29 @@ func TestComputeNewStyleScheduleComplexClamping(t *testing.T) {
 		{Time: "sunset + 180m", ColorTemperature: 3000, Brightness: 100},
 		{Time: "18:00", ColorTemperature: 2000, Brightness: 70},
 	}
-	date := parseTime("2021-04-28 00:01:00")
+	date := parseTime("2021-04-28 00:01")
 	// This is before the first time in the config.
-	sunrise := parseTime("2021-04-28 07:00:00")
-	sunset := parseTime("2021-04-28 19:30:00")
+	sunrise := parseTime("2021-04-28 07:00")
+	sunset := parseTime("2021-04-28 19:30")
 	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
 	if err != nil {
 		t.Fatalf("Got error %v", err)
 	}
 	expectedTimes := []TimeStamp{
 		// Previous day.
-		TimeStamp{parseTime("2021-04-27 18:00:00"), 2000, 70},
-		TimeStamp{parseTime("2021-04-28 08:00:00"), 2700, 80},
-		// Clamped sunrise.
-		TimeStamp{parseTime("2021-04-28 08:01:00"), 3000, 90},
+		TimeStamp{parseTime("2021-04-27 18:00"), 2000, 70},
+		TimeStamp{parseTime("2021-04-28 08:00"), 2700, 80},
+		// Sunrise (clamped to be after 8:00).
+		TimeStamp{parseTime("2021-04-28 08:01"), 3000, 90},
 		// Clamped sunrise + 180m.
-		TimeStamp{parseTime("2021-04-28 11:01:00"), 5000, 100},
+		TimeStamp{parseTime("2021-04-28 11:01"), 5000, 100},
                 // clamped sunset - 180m
-		TimeStamp{parseTime("2021-04-28 11:59:00"), 4000, 100},
+		TimeStamp{parseTime("2021-04-28 11:59"), 4000, 100},
 		// clamped sunset + 180m
-		TimeStamp{parseTime("2021-04-28 17:59:00"), 3000, 100},
-		TimeStamp{parseTime("2021-04-28 18:00:00"), 2000, 70},
+		TimeStamp{parseTime("2021-04-28 17:59"), 3000, 100},
+		TimeStamp{parseTime("2021-04-28 18:00"), 2000, 70},
 		// Next day
-		TimeStamp{parseTime("2021-04-29 08:00:00"), 2700, 80},
+		TimeStamp{parseTime("2021-04-29 08:00"), 2700, 80},
 	}
 	for i, expectedTime := range expectedTimes {
 		if expectedTime != schedule[i] {
