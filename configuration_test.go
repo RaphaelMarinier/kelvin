@@ -79,10 +79,10 @@ func TestLightScheduleForDay(t *testing.T) {
 
 func TestComputeNewStyleScheduleEasy(t *testing.T) {
 	configSchedule := []TimedColorTemperature{
-		{"8:00", 2700, 80},
-		{"sunrise", 3000, 90},
-		{"sunrise + 30m", 5000, 100},
-		{"10:00", 6000, 100},
+		{Time: "8:00", ColorTemperature: 2700, Brightness: 80},
+		{Time: "sunrise", ColorTemperature: 3000, Brightness: 90},
+		{Time: "sunrise + 30m", ColorTemperature: 5000, Brightness: 100},
+		{Time: "10:00", ColorTemperature: 6000, Brightness: 100},
 	}
 	date := parseTime("2021-04-28 00:01:00")
 	sunrise := parseTime("2021-04-28 08:30:00")
@@ -113,12 +113,12 @@ func TestComputeNewStyleScheduleEasy(t *testing.T) {
 
 func TestComputeNewStyleScheduleEasy2(t *testing.T) {
 	configSchedule := []TimedColorTemperature{
-		{"8:00", 2700, 80},
-		{"sunrise", 3000, 90},
-		{"sunrise + 30m", 5000, 100},
-		{"sunset", 3000, 90},
-		{"sunset + 30m", 2000, 80},
-		{"22:00", 2000, 70},
+		{Time: "8:00", ColorTemperature: 2700, Brightness: 80},
+		{Time: "sunrise", ColorTemperature: 3000, Brightness: 90},
+		{Time: "sunrise + 30m", ColorTemperature: 5000, Brightness: 100},
+		{Time: "sunset", ColorTemperature: 3000, Brightness: 90},
+		{Time: "sunset + 30m", ColorTemperature: 2000, Brightness: 80},
+		{Time: "22:00", ColorTemperature: 2000, Brightness: 70},
 	}
 	date := parseTime("2021-04-28 00:01:00")
 	sunrise := parseTime("2021-04-28 08:30:00")
@@ -154,10 +154,10 @@ func TestComputeNewStyleScheduleEasy2(t *testing.T) {
 // Failing, as expected since the main code is not ready.
 func TestComputeNewStyleScheduleClampedSunrise(t *testing.T) {
 	configSchedule := []TimedColorTemperature{
-		{"8:00", 2700, 80},
-		{"sunrise", 3000, 90},
-		{"sunrise + 30m", 5000, 100},
-		{"22:00", 2000, 70},
+		{Time: "8:00", ColorTemperature: 2700, Brightness: 80},
+		{Time: "sunrise", ColorTemperature: 3000, Brightness: 90},
+		{Time: "sunrise + 30m", ColorTemperature: 5000, Brightness: 100},
+		{Time: "22:00", ColorTemperature: 2000, Brightness: 70},
 	}
 	date := parseTime("2021-04-28 00:01:00")
 	// This is before the first time in the config.
@@ -190,10 +190,10 @@ func TestComputeNewStyleScheduleClampedSunrise(t *testing.T) {
 // Failing, as expected since the main code is not ready.
 func TestComputeNewStyleScheduleClampedSunset(t *testing.T) {
 	configSchedule := []TimedColorTemperature{
-		{"8:00", 5000, 100},
-		{"sunset", 4000, 90},
-		{"sunset + 30m", 2000, 90},
-		{"22:00", 2000, 70},
+		{Time: "8:00", ColorTemperature: 5000, Brightness: 100},
+		{Time: "sunset", ColorTemperature: 4000, Brightness: 90},
+		{Time: "sunset + 30m", ColorTemperature: 2000, Brightness: 90},
+		{Time: "22:00", ColorTemperature: 2000, Brightness: 70},
 	}
 	date := parseTime("2021-04-28 00:01:00")
 	sunrise := parseTime("2021-04-28 07:00:00")
@@ -226,10 +226,10 @@ func TestComputeNewStyleScheduleClampedSunset(t *testing.T) {
 // Failing, as expected since the main code is not ready.
 func TestComputeNewStyleScheduleImpossibleSunriseClamping(t *testing.T) {
 	configSchedule := []TimedColorTemperature{
-		{"8:00", 2700, 80},
-		{"sunrise", 3000, 90},
-		{"sunrise + 30m", 5000, 100},
-		{"08:20", 2000, 70},
+		{Time: "8:00", ColorTemperature: 2700, Brightness: 80},
+		{Time: "sunrise", ColorTemperature: 3000, Brightness: 90},
+		{Time: "sunrise + 30m", ColorTemperature: 5000, Brightness: 100},
+		{Time: "08:20", ColorTemperature: 2000, Brightness: 70},
 	}
 	date := parseTime("2021-04-28 00:01:00")
 	sunrise := parseTime("2021-04-28 07:00:00")
@@ -243,10 +243,10 @@ func TestComputeNewStyleScheduleImpossibleSunriseClamping(t *testing.T) {
 // Failing, as expected since the main code is not ready.
 func TestComputeNewStyleScheduleImpossibleSunsetClamping(t *testing.T) {
 	configSchedule := []TimedColorTemperature{
-		{"20:00", 2700, 80},
-		{"sunset", 3000, 90},
-		{"sunset + 30m", 5000, 100},
-		{"20:00", 2000, 70},
+		{Time: "20:00", ColorTemperature: 2700, Brightness: 80},
+		{Time: "sunset", ColorTemperature: 3000, Brightness: 90},
+		{Time: "sunset + 30m", ColorTemperature: 5000, Brightness: 100},
+		{Time: "20:00", ColorTemperature: 2000, Brightness: 70},
 	}
 	date := parseTime("2021-04-28 00:01:00")
 	sunrise := parseTime("2021-04-28 07:00:00")
@@ -262,12 +262,12 @@ func TestComputeNewStyleScheduleImpossibleSunsetClamping(t *testing.T) {
 // TODO: test is not fully written.
 func TestComputeNewStyleScheduleComplexClamping(t *testing.T) {
 	configSchedule := []TimedColorTemperature{
-		{"8:00", 2700, 80},
-		{"sunrise", 3000, 90},
-		{"sunrise + 180m", 5000, 100},
-                {"sunset - 180m", 3000, 90},
-		{"sunset + 180m", 5000, 100},
-		{"18:00", 2000, 70},
+		{Time: "8:00", ColorTemperature: 2700, Brightness: 80},
+		{Time: "sunrise", ColorTemperature: 3000, Brightness: 90},
+		{Time: "sunrise + 180m", ColorTemperature: 5000, Brightness: 100},
+                {Time: "sunset - 180m", ColorTemperature: 3000, Brightness: 90},
+		{Time: "sunset + 180m", ColorTemperature: 5000, Brightness: 100},
+		{Time: "18:00", ColorTemperature: 2000, Brightness: 70},
 	}
 	date := parseTime("2021-04-28 00:01:00")
 	// This is before the first time in the config.
