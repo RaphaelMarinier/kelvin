@@ -186,6 +186,7 @@ func TestComputeNewStyleScheduleClampedSunrise(t *testing.T) {
 		}
 	}
 }
+
 // Failing, as expected since the main code is not ready.
 func TestComputeNewStyleScheduleClampedSunset(t *testing.T) {
 	configSchedule := []TimedColorTemperature{
@@ -213,6 +214,80 @@ func TestComputeNewStyleScheduleClampedSunset(t *testing.T) {
 		TimeStamp{parseTime("2021-04-28 22:00:00"), 2000, 70},
 		// Next day
 		TimeStamp{parseTime("2021-04-29 08:00:00"), 5000, 100},
+	}
+	for i, expectedTime := range expectedTimes {
+		if expectedTime != schedule[i] {
+			t.Fatalf("Got unexpected timestamp at position %v. Got %v expected %v.\nFull schedule obtained: %v, full schedule expected: %v",
+				i, schedule[i], expectedTime, schedule, expectedTimes)
+		}
+	}
+}
+
+// Failing, as expected since the main code is not ready.
+func TestComputeNewStyleScheduleImpossibleSunriseClamping(t *testing.T) {
+	configSchedule := []TimedColorTemperature{
+		{"8:00", 2700, 80},
+		{"sunrise", 3000, 90},
+		{"sunrise + 30m", 5000, 100},
+		{"08:20", 2000, 70},
+	}
+	date := parseTime("2021-04-28 00:01:00")
+	sunrise := parseTime("2021-04-28 07:00:00")
+	sunset := parseTime("2021-04-28 19:30:00")
+	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
+	if err == nil {
+		t.Fatalf("Expected error, got schedule %v", schedule)
+	}
+}
+
+// Failing, as expected since the main code is not ready.
+func TestComputeNewStyleScheduleImpossibleSunsetClamping(t *testing.T) {
+	configSchedule := []TimedColorTemperature{
+		{"20:00", 2700, 80},
+		{"sunset", 3000, 90},
+		{"sunset + 30m", 5000, 100},
+		{"20:00", 2000, 70},
+	}
+	date := parseTime("2021-04-28 00:01:00")
+	sunrise := parseTime("2021-04-28 07:00:00")
+	sunset := parseTime("2021-04-28 19:30:00")
+	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
+	if err == nil {
+		t.Fatalf("Expected error, got schedule %v", schedule)
+	}
+}
+
+// Failing, as expected since the main code is not ready.
+// Do we really want that? (sunset changing the sunrise?)
+// TODO: test is not fully written.
+func TestComputeNewStyleScheduleComplexClamping(t *testing.T) {
+	configSchedule := []TimedColorTemperature{
+		{"8:00", 2700, 80},
+		{"sunrise", 3000, 90},
+		{"sunrise + 180m", 5000, 100},
+                {"sunset - 180m", 3000, 90},
+		{"sunset + 180m", 5000, 100},
+		{"18:00", 2000, 70},
+	}
+	date := parseTime("2021-04-28 00:01:00")
+	// This is before the first time in the config.
+	sunrise := parseTime("2021-04-28 07:00:00")
+	sunset := parseTime("2021-04-28 19:30:00")
+	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
+	if err != nil {
+		t.Fatalf("Got error %v", err)
+	}
+	expectedTimes := []TimeStamp{
+		// Previous day.
+		TimeStamp{parseTime("2021-04-27 22:00:00"), 2000, 70},
+		TimeStamp{parseTime("2021-04-28 08:00:00"), 2700, 80},
+		// Clamped sunrise.
+		TimeStamp{parseTime("2021-04-28 08:01:00"), 3000, 90},
+		// Clamped sunrise + 30m.
+		TimeStamp{parseTime("2021-04-28 08:31:00"), 5000, 100},
+		TimeStamp{parseTime("2021-04-28 22:00:00"), 2000, 70},
+		// Next day
+		TimeStamp{parseTime("2021-04-29 08:00:00"), 2700, 80},
 	}
 	for i, expectedTime := range expectedTimes {
 		if expectedTime != schedule[i] {
