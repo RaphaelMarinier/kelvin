@@ -257,16 +257,13 @@ func TestComputeNewStyleScheduleImpossibleSunsetClamping(t *testing.T) {
 	}
 }
 
-// Failing, as expected since the main code is not ready.
-// Do we really want that? (sunset changing the sunrise?)
-// TODO: test is not fully written.
 func TestComputeNewStyleScheduleComplexClamping(t *testing.T) {
 	configSchedule := []TimedColorTemperature{
 		{Time: "8:00", ColorTemperature: 2700, Brightness: 80},
 		{Time: "sunrise", ColorTemperature: 3000, Brightness: 90},
 		{Time: "sunrise + 180m", ColorTemperature: 5000, Brightness: 100},
-		{Time: "sunset - 180m", ColorTemperature: 3000, Brightness: 90},
-		{Time: "sunset + 180m", ColorTemperature: 5000, Brightness: 100},
+		{Time: "sunset - 180m", ColorTemperature: 4000, Brightness: 100},
+		{Time: "sunset + 180m", ColorTemperature: 3000, Brightness: 100},
 		{Time: "18:00", ColorTemperature: 2000, Brightness: 70},
 	}
 	date := parseTime("2021-04-28 00:01:00")
@@ -279,13 +276,17 @@ func TestComputeNewStyleScheduleComplexClamping(t *testing.T) {
 	}
 	expectedTimes := []TimeStamp{
 		// Previous day.
-		TimeStamp{parseTime("2021-04-27 22:00:00"), 2000, 70},
+		TimeStamp{parseTime("2021-04-27 18:00:00"), 2000, 70},
 		TimeStamp{parseTime("2021-04-28 08:00:00"), 2700, 80},
 		// Clamped sunrise.
 		TimeStamp{parseTime("2021-04-28 08:01:00"), 3000, 90},
-		// Clamped sunrise + 30m.
-		TimeStamp{parseTime("2021-04-28 08:31:00"), 5000, 100},
-		TimeStamp{parseTime("2021-04-28 22:00:00"), 2000, 70},
+		// Clamped sunrise + 180m.
+		TimeStamp{parseTime("2021-04-28 11:01:00"), 5000, 100},
+                // clamped sunset - 180m
+		TimeStamp{parseTime("2021-04-28 11:59:00"), 4000, 100},
+		// clamped sunset + 180m
+		TimeStamp{parseTime("2021-04-28 17:59:00"), 3000, 100},
+		TimeStamp{parseTime("2021-04-28 18:00:00"), 2000, 70},
 		// Next day
 		TimeStamp{parseTime("2021-04-29 08:00:00"), 2700, 80},
 	}
