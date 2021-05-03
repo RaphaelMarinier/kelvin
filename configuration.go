@@ -54,6 +54,8 @@ type WebInterface struct {
 	Port    int  `json:"port"`
 }
 
+// TODO: update webinterface.go with the new-style schedule.
+
 // LightSchedule represents the schedule for any given day for the associated lights.
 type LightSchedule struct {
 	Name                   string `json:"name"`
@@ -98,9 +100,6 @@ type TimedColorTemperature struct {
 	ParsedTimeInDay time.Time `json:"-"`
 	// Only specified when ParsedTimePointType is Sunrise or Sunset.
 	ParsedOffset time.Duration `json:"-"`
-}
-
-type ParsedTimedColorTemperature struct {
 }
 
 // Configuration encapsulates all relevant parameters for Kelvin to operate.
@@ -271,7 +270,7 @@ func (configuration *Configuration) Read() error {
 
 func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 	sunrise time.Time, sunset time.Time, date time.Time) ([]TimeStamp, error) {
-        log.Warningf("⚙ computeNewStyleSchedule")
+	log.Warningf("⚙ computeNewStyleSchedule")
 	yr, mth, dy := date.Date()
 	startOfDay := time.Date(yr, mth, dy, 0, 0, 0, 0, date.Location())
 	endOfDay := time.Date(yr, mth, dy, 23, 59, 59, 0, date.Location())
@@ -395,6 +394,8 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 	}
 	timeStamps = append(timeStamps, lastTimeStamp)
 
+	// Check that there is no inversion left, otherwise, it means that schedule
+	// cannot be satisfied, even when moving sunrise/sunset.
 	for i, _ := range timeStamps {
 		if i+1 >= len(timeStamps) {
 			break
@@ -403,7 +404,8 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 			// Note difference of one in timeStamps and configSchedule indices.
 			curConfig := configSchedule[(i+len(configSchedule)-1)%len(configSchedule)]
 			nextConfig := configSchedule[i%len(configSchedule)]
-			return timeStamps, fmt.Errorf("Schedule cannot be satisfied. With real sunrise %v, adjusted sunrise: %v, real sunset: %v, adjusted sunset: %v, we still get %v (%v) was still after %v (%v)", realSun[Sunrise], adjustedSun[Sunrise], realSun[Sunset], adjustedSun[Sunset], curConfig.Time, timeStamps[i].Time, nextConfig, timeStamps[i+1].Time)
+			return timeStamps, fmt.Errorf("Schedule cannot be satisfied. With real sunrise %v, adjusted sunrise: %v, real sunset: %v, adjusted sunset: %v, we still get %v (%v) was still after %v (%v)",
+				realSun[Sunrise], adjustedSun[Sunrise], realSun[Sunset], adjustedSun[Sunset], curConfig.Time, timeStamps[i].Time, nextConfig, timeStamps[i+1].Time)
 		}
 	}
 	return timeStamps, nil
@@ -431,7 +433,7 @@ func (configuration *Configuration) lightScheduleForDay(
 		return schedule, fmt.Errorf("Light %d is not associated with any schedule in configuration", light)
 	}
 
-        schedule.enableWhenLightsAppear = lightSchedule.EnableWhenLightsAppear
+	schedule.enableWhenLightsAppear = lightSchedule.EnableWhenLightsAppear
 	schedule.sunrise = TimeStamp{sunStateCalculator.CalculateSunrise(date, configuration.Location.Latitude, configuration.Location.Longitude), lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
 	schedule.sunset = TimeStamp{sunStateCalculator.CalculateSunset(date, configuration.Location.Latitude, configuration.Location.Longitude), lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
 
@@ -513,67 +515,11 @@ func (color *TimedColorTemperature) AsTimestamp(referenceTime time.Time) (TimeSt
 	return TimeStamp{targetTime, color.ColorTemperature, color.Brightness}, nil
 }
 
-// referenceTime is an arbitrary time in the current day.
 // This function parses the time field of a TimedColorTemperature coming from the config.
 // Accepted formats:
-// HH:MM
-// (sunrise|sunset) [ (+|-) NN m[inutes] ]
-// With obvious semantics.
-// The returned time corresponds to the day from `referenceTime` and time in day computed from
-// parsing `TimedColortemperature`.
-func (color *TimedColorTemperature) AsTimestamp2(referenceTime time.Time, sunrise time.Time, sunset time.Time) (TimeStamp, TimePointType, error) {
-	re := regexp.MustCompile(`(?P<time>\d{1,2}:\d\d)|(?P<spec>(sunrise|sunset)(\s*(\+|-)\s*(\d+)\s*m.*){0,1})`)
-	//	if err != nil {
-	//		return TimeStamp{time.Now(), color.ColorTemperature, color.Brightness}, err
-	//        }
-	matches := re.FindStringSubmatch(color.Time)
-	if len(matches[0]) == 0 {
-		return TimeStamp{time.Now(), color.ColorTemperature, color.Brightness}, FixedTimePoint, fmt.Errorf("Invalid timestamp %v", color.Time)
-	}
-	var ret TimeStamp
-	var timePointType TimePointType
-	if len(matches[1]) > 0 {
-		// Time of the form hh:mm
-		layout := "15:04"
-		t, err := time.Parse(layout, color.Time)
-		if err != nil {
-			return TimeStamp{time.Now(), color.ColorTemperature, color.Brightness}, FixedTimePoint, err
-		}
-		yr, mth, day := referenceTime.Date()
-		ret.Time = time.Date(yr, mth, day, t.Hour(), t.Minute(), t.Second(), 0, referenceTime.Location())
-		timePointType = FixedTimePoint
-	} else if len(matches[2]) > 0 {
-		// sunrise|sunset [(+|-) NN minutes].
-		if matches[3] == "sunrise" {
-			ret.Time = sunrise
-			timePointType = Sunrise
-		} else { // sunset
-			ret.Time = sunset
-			timePointType = Sunset
-		}
-		if len(matches[4]) > 0 {
-			minutes, err := strconv.Atoi(matches[6])
-			if err != nil {
-				return TimeStamp{time.Now(), color.ColorTemperature, color.Brightness}, FixedTimePoint, err
-			}
-			if matches[5] == "+" {
-				ret.Time = ret.Time.Add(time.Minute * time.Duration(minutes))
-			} else {
-				// minus
-				ret.Time = ret.Time.Add(-time.Minute * time.Duration(minutes))
-			}
-		}
-	}
-	ret.ColorTemperature = color.ColorTemperature
-	ret.Brightness = color.Brightness
-	return ret, timePointType, nil
-}
-
-// This function parses the time field of a TimedColorTemperature coming from the config.
-// Accepted formats:
-// HH:MM
-// (sunrise|sunset) [ (+|-) NN m[inutes] ]
-// With obvious semantics.
+// - HH:MM
+// - (sunrise|sunset) [ (+|-) NN m[inutes] ]
+// with obvious semantics.
 func (color *TimedColorTemperature) ParseTime() error {
 	re := regexp.MustCompile(`(?P<time>\d{1,2}:\d\d)|(?P<spec>(sunrise|sunset)(\s*(\+|-)\s*(\d+)\s*m.*){0,1})`)
 	matches := re.FindStringSubmatch(color.Time)
@@ -614,8 +560,9 @@ func (color *TimedColorTemperature) ParseTime() error {
 	return fmt.Errorf("Internal error parsing time %v", color.Time)
 }
 
+// Given a TimedColorTemperature on which ParseTime() has been called (otherwise, we panic()),
+// returns the corresponding time.Time.
 func (color *TimedColorTemperature) AsTime(startOfDay time.Time, sunrise time.Time, sunset time.Time) time.Time {
-	// (time.Time, error) {
 	switch color.ParsedTimePointType {
 	case FixedTimePoint:
 		{
@@ -630,7 +577,6 @@ func (color *TimedColorTemperature) AsTime(startOfDay time.Time, sunrise time.Ti
 		return sunset.Add(color.ParsedOffset) //, nil
 	default:
 		panic(fmt.Errorf("Internal error: TimedColorTemperature.ParseTime was not called %v", color))
-		//		return time.Time{}, err
 	}
 }
 
