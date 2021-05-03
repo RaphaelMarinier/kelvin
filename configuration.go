@@ -271,6 +271,7 @@ func (configuration *Configuration) Read() error {
 
 func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 	sunrise time.Time, sunset time.Time, date time.Time) ([]TimeStamp, error) {
+        log.Warningf("⚙ computeNewStyleSchedule")
 	yr, mth, dy := date.Date()
 	startOfDay := time.Date(yr, mth, dy, 0, 0, 0, 0, date.Location())
 	endOfDay := time.Date(yr, mth, dy, 23, 59, 59, 0, date.Location())
@@ -293,7 +294,7 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 	realSun[Sunrise] = sunrise
 	adjustedSun = realSun
 	// First pass where we adjust the sunrise and sunset to later times if needed.
-//	log.Warningf("⚙ Processing schedule")
+	log.Warningf("⚙ Processing schedule")
 	for i, _ := range configSchedule {
 		if i-1 >= 0 {
 			previousConfig = &configSchedule[i-1]
@@ -301,11 +302,11 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 		previousTime := previousConfig.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset])
 		currentConfig := &configSchedule[i]
 		currentTime := currentConfig.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset])
-//		log.Warningf("⚙ Processing %v (%v) %v (%v)", previousConfig, previousTime, currentConfig, currentTime)
+		log.Warningf("⚙ Processing %v (%v) %v (%v)", previousConfig, previousTime, currentConfig, currentTime)
 		if currentTime.After(previousTime) || currentTime.Equal(previousTime) {
 			continue
 		}
-//		log.Warningf("⚙ Inversion %v %v", previousConfig, currentConfig)
+		log.Warningf("⚙ Inversion %v %v", previousConfig, currentConfig)
 		// currentTime is before previousTime, we need to adjust things when possible.
 		if previousConfig.ParsedTimePointType == FixedTimePoint && currentConfig.ParsedTimePointType == FixedTimePoint {
 			return timeStamps, fmt.Errorf("Wrong order in schedule: %v appeared before %v", previousConfig.Time, currentConfig.Time)
@@ -325,7 +326,7 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 			adjustedSun[currentConfig.ParsedTimePointType] = adjustedSun[currentConfig.ParsedTimePointType].Add(offset)
 			// One minute transition.
 			adjustedSun[currentConfig.ParsedTimePointType] = adjustedSun[currentConfig.ParsedTimePointType].Add(time.Minute)
-//			log.Warningf("⚙ Adjusting sun %v to %v (real %v)", currentConfig.ParsedTimePointType, adjustedSun[currentConfig.ParsedTimePointType], realSun[currentConfig.ParsedTimePointType])
+			log.Warningf("⚙ Adjusting sun %v to %v (real %v)", currentConfig.ParsedTimePointType, adjustedSun[currentConfig.ParsedTimePointType], realSun[currentConfig.ParsedTimePointType])
 		}
 	}
 
@@ -430,6 +431,7 @@ func (configuration *Configuration) lightScheduleForDay(
 		return schedule, fmt.Errorf("Light %d is not associated with any schedule in configuration", light)
 	}
 
+        schedule.enableWhenLightsAppear = lightSchedule.EnableWhenLightsAppear
 	schedule.sunrise = TimeStamp{sunStateCalculator.CalculateSunrise(date, configuration.Location.Latitude, configuration.Location.Longitude), lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
 	schedule.sunset = TimeStamp{sunStateCalculator.CalculateSunset(date, configuration.Location.Latitude, configuration.Location.Longitude), lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
 
@@ -467,7 +469,6 @@ func (configuration *Configuration) lightScheduleForDay(
 		schedule.afterSunset = append(schedule.afterSunset, timestamp)
 	}
 
-	schedule.enableWhenLightsAppear = lightSchedule.EnableWhenLightsAppear
 	return schedule, nil
 }
 
