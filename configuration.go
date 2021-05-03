@@ -293,7 +293,7 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 	realSun[Sunrise] = sunrise
 	adjustedSun = realSun
 	// First pass where we adjust the sunrise and sunset to later times if needed.
-	log.Warningf("⚙ Processing schedule")
+//	log.Warningf("⚙ Processing schedule")
 	for i, _ := range configSchedule {
 		if i-1 >= 0 {
 			previousConfig = &configSchedule[i-1]
@@ -301,11 +301,11 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 		previousTime := previousConfig.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset])
 		currentConfig := &configSchedule[i]
 		currentTime := currentConfig.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset])
-		log.Warningf("⚙ Processing %v (%v) %v (%v)", previousConfig, previousTime, currentConfig, currentTime)
+//		log.Warningf("⚙ Processing %v (%v) %v (%v)", previousConfig, previousTime, currentConfig, currentTime)
 		if currentTime.After(previousTime) || currentTime.Equal(previousTime) {
 			continue
 		}
-		log.Warningf("⚙ Inversion %v %v", previousConfig, currentConfig)
+//		log.Warningf("⚙ Inversion %v %v", previousConfig, currentConfig)
 		// currentTime is before previousTime, we need to adjust things when possible.
 		if previousConfig.ParsedTimePointType == FixedTimePoint && currentConfig.ParsedTimePointType == FixedTimePoint {
 			return timeStamps, fmt.Errorf("Wrong order in schedule: %v appeared before %v", previousConfig.Time, currentConfig.Time)
@@ -325,7 +325,7 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 			adjustedSun[currentConfig.ParsedTimePointType] = adjustedSun[currentConfig.ParsedTimePointType].Add(offset)
 			// One minute transition.
 			adjustedSun[currentConfig.ParsedTimePointType] = adjustedSun[currentConfig.ParsedTimePointType].Add(time.Minute)
-			log.Warningf("⚙ Adjusting sun %v to %v (real %v)", currentConfig.ParsedTimePointType, adjustedSun[currentConfig.ParsedTimePointType], realSun[currentConfig.ParsedTimePointType])
+//			log.Warningf("⚙ Adjusting sun %v to %v (real %v)", currentConfig.ParsedTimePointType, adjustedSun[currentConfig.ParsedTimePointType], realSun[currentConfig.ParsedTimePointType])
 		}
 	}
 
@@ -406,54 +406,6 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 		}
 	}
 	return timeStamps, nil
-
-	// // First, add the last time point from the previous day, to make sure we fully cover
-	// // the current day.
-	// lastSchedule := configSchedule[len(configSchedule)-1]
-	// previousDayLastTimestamp, timeType, err := lastSchedule.AsTimestamp2(
-	// 	date.AddDate(0, 0, -1), sunrise, sunset)
-	// // TODO: Fix the corner case where the last time of the previous day is actually in
-	// // the current day (e.g. sunset + high value or location where the sunset is after midnight).
-	// // TODO: Fix also the corner case where there was a time inversion in the lats
-	// // timestamps of the previous day.
-	// if err != nil {
-	// 	log.Warningf("⚙ Found invalid configuration entry in schedule: %+v (Error: %v)", lastSchedule, err)
-	// 	return timeStamps, err
-	// }
-
-	// timeStamps = append(timeStamps, previousDayLastTimestamp)
-	// lastTimeType := timeType
-	// for _, timedColorTemp := range configSchedule {
-	// 	timestamp, timeType, err := timedColorTemp.AsTimestamp2(date, sunrise, sunset)
-	// 	if err != nil {
-	// 		log.Warningf("⚙ Found invalid configuration entry in schedule: %+v (Error: %v)", timedColorTemp, err)
-	// 		return timeStamps, err
-	// 	}
-	// 	previousTime := timeStamps[len(timeStamps)-1].Time
-	// 	// TODO: double-check condition,
-	// 	if timestamp.Time.Before(previousTime) || timestamp.Time.Equal(previousTime) {
-	// 		// Due to sunset and sunrise times being variable, there can be schedule inversions.
-	// 		// In that case, we "clamp"
-	// 		// TODO: there is a bug there regarding sunset, it is not clamped, but rather the next entry (which might be static, is clamped).
-	// 		// TODO: Consider making it an error when the time inversion is not due to
-	// 		// sunset/sunrise, which indicates a permanent error in the config.
-	// 		log.Warningf("Found time inversion %v is before %v", timestamp.Time, previousTime)
-	// 		timestamp.Time = previousTime.Add(time.Minute)
-	// 	}
-	// 	log.Warningf("Adding timepoint %v", timestamp)
-	// 	timeStamps = append(timeStamps, timestamp)
-	// 	lastTimeType = timeType
-	// }
-	// fmt.Printf("%v", lastTimeType)
-	// nextDayFirstTimestamp, timeType, err := configSchedule[0].AsTimestamp2(date.AddDate(0, 0, 1), sunrise, sunset)
-	// // TODO: fix the same corner cases as with the previous day last timestamp above.
-	// if err != nil {
-	// 	log.Warningf("⚙ Found invalid configuration entry in schedule: %+v (Error: %v)", configSchedule[0], err)
-	// 	return timeStamps, err
-	// }
-	// log.Warningf("First timepoint next day %v", nextDayFirstTimestamp)
-	// timeStamps = append(timeStamps, nextDayFirstTimestamp)
-	// return timeStamps, nil
 }
 
 func (configuration *Configuration) lightScheduleForDay(

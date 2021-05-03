@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -257,7 +258,7 @@ func TestComputeNewStyleScheduleImpossibleSunsetClamping(t *testing.T) {
 	}
 }
 
-func TestComputeNewStyleScheduleComplexClamping(t *testing.T) {
+func TestComputeNewStyleScheduleComplexClamping1(t *testing.T) {
 	configSchedule := []TimedColorTemperature{
 		{Time: "8:00", ColorTemperature: 2700, Brightness: 80},
 		{Time: "sunrise", ColorTemperature: 3000, Brightness: 90},
@@ -282,7 +283,7 @@ func TestComputeNewStyleScheduleComplexClamping(t *testing.T) {
 		TimeStamp{parseTime("2021-04-28 08:01"), 3000, 90},
 		// Clamped sunrise + 180m.
 		TimeStamp{parseTime("2021-04-28 11:01"), 5000, 100},
-                // clamped sunset - 180m
+		// clamped sunset - 180m
 		TimeStamp{parseTime("2021-04-28 11:59"), 4000, 100},
 		// clamped sunset + 180m
 		TimeStamp{parseTime("2021-04-28 17:59"), 3000, 100},
@@ -298,8 +299,96 @@ func TestComputeNewStyleScheduleComplexClamping(t *testing.T) {
 	}
 }
 
-// TODO: test case when sunrise moves around, same for sunset.
-// TODO: add logging.
+func TestComputeNewStyleScheduleComplexClamping2(t *testing.T) {
+	configSchedule := []TimedColorTemperature{
+		{Time: "8:00", ColorTemperature: 2700, Brightness: 80},
+		{Time: "sunrise", ColorTemperature: 3000, Brightness: 90},
+		{Time: "sunrise + 180m", ColorTemperature: 5000, Brightness: 100},
+		{Time: "sunset - 240m", ColorTemperature: 4000, Brightness: 100},
+		{Time: "sunset + 180m", ColorTemperature: 3000, Brightness: 100},
+		{Time: "19:00", ColorTemperature: 2000, Brightness: 70},
+	}
+	date := parseTime("2021-04-28 00:01")
+	// This is before the first time in the config.
+	sunrise := parseTime("2021-04-28 07:00")
+	sunset := parseTime("2021-04-28 14:30")
+	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
+	if err != nil {
+		t.Fatalf("Got error %v", err)
+	}
+	expectedTimes := []TimeStamp{
+		// Previous day.
+		TimeStamp{parseTime("2021-04-27 19:00"), 2000, 70},
+		TimeStamp{parseTime("2021-04-28 08:00"), 2700, 80},
+		// Sunrise (clamped to be after 8:00).
+		TimeStamp{parseTime("2021-04-28 08:01"), 3000, 90},
+		// Clamped sunrise + 180m.
+		TimeStamp{parseTime("2021-04-28 11:01"), 5000, 100},
+		// clamped sunset - 180m
+		TimeStamp{parseTime("2021-04-28 11:02"), 4000, 100},
+		// clamped sunset + 180m
+		TimeStamp{parseTime("2021-04-28 18:02"), 3000, 100},
+		TimeStamp{parseTime("2021-04-28 19:00"), 2000, 70},
+		// Next day
+		TimeStamp{parseTime("2021-04-29 08:00"), 2700, 80},
+	}
+	for i, expectedTime := range expectedTimes {
+		if expectedTime != schedule[i] {
+			t.Fatalf("Got unexpected timestamp at position %v. Got %v expected %v.\nFull schedule obtained: %v, full schedule expected: %v",
+				i, schedule[i], expectedTime, schedule, expectedTimes)
+		}
+	}
+}
+
+func TestComputeNewStyleScheduleImpossible1(t *testing.T) {
+	configSchedule := []TimedColorTemperature{
+		{Time: "8:00", ColorTemperature: 2700, Brightness: 80},
+		{Time: "sunrise - 240m", ColorTemperature: 3000, Brightness: 90},
+		{Time: "sunrise + 240m", ColorTemperature: 5000, Brightness: 100},
+		{Time: "15:00", ColorTemperature: 2000, Brightness: 70},
+	}
+	date := parseTime("2021-04-28 00:01")
+	sunrise := parseTime("2021-04-28 07:00")
+	sunset := parseTime("2021-04-28 14:30")
+	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
+	if !strings.Contains(err.Error(), "cannot be satisfied") {
+		t.Fatalf("Got unexpected error %v and schedule %v", err, schedule)
+	}
+}
+
+func TestComputeNewStyleScheduleImpossible2(t *testing.T) {
+	configSchedule := []TimedColorTemperature{
+		{Time: "10:00", ColorTemperature: 2700, Brightness: 80},
+		{Time: "sunset - 240m", ColorTemperature: 3000, Brightness: 90},
+		{Time: "sunset + 240m", ColorTemperature: 5000, Brightness: 100},
+		{Time: "17:00", ColorTemperature: 2000, Brightness: 70},
+	}
+	date := parseTime("2021-04-28 00:01")
+	sunrise := parseTime("2021-04-28 07:00")
+	sunset := parseTime("2021-04-28 14:30")
+	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
+	if !strings.Contains(err.Error(), "cannot be satisfied") {
+		t.Fatalf("Got unexpected error %v and schedule %v", err, schedule)
+	}
+}
+
+func TestComputeNewStyleScheduleImpossible3(t *testing.T) {
+	configSchedule := []TimedColorTemperature{
+		{Time: "10:00", ColorTemperature: 2700, Brightness: 80},
+		{Time: "sunrise - 120m", ColorTemperature: 3000, Brightness: 90},
+		{Time: "sunrise + 120m", ColorTemperature: 5000, Brightness: 100},
+                {Time: "sunset - 120m", ColorTemperature: 3000, Brightness: 90},
+		{Time: "sunset + 120m", ColorTemperature: 5000, Brightness: 100},
+		{Time: "17:00", ColorTemperature: 2000, Brightness: 70},
+	}
+	date := parseTime("2021-04-28 00:01")
+	sunrise := parseTime("2021-04-28 07:00")
+	sunset := parseTime("2021-04-28 14:30")
+	schedule, err := ComputeNewStyleSchedule(configSchedule, sunrise, sunset, date)
+	if !strings.Contains(err.Error(), "cannot be satisfied") {
+		t.Fatalf("Got unexpected error %v and schedule %v", err, schedule)
+	}
+}
 
 func TestReadError(t *testing.T) {
 	wrongfiles := []string{
