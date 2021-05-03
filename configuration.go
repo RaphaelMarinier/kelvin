@@ -288,6 +288,9 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 	// light temperature or brightness).
 	previousConfig := &TimedColorTemperature{"", -1, -1, FixedTimePoint,
 		startOfDay, time.Duration(0)}
+	// realSun contains real sunrise/sunset times for the current day.
+        // adjustedSun will contain adjusted sunrise/sunset so that a sunrise- or
+	// sunset-based time never crosses a fixed time.
 	var adjustedSun, realSun [NumTimePointTypes]time.Time
 	realSun[Sunset] = sunset
 	realSun[Sunrise] = sunrise

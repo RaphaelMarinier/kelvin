@@ -1,4 +1,4 @@
-{
+
   "version": 1,
   "bridge": {
     "ip": "192.168.10.37",
@@ -24,8 +24,6 @@
         6
       ],
       "enableWhenLightsAppear": true,
-      "defaultColorTemperature": 2750,
-      "defaultBrightness": 100,
       "schedule": [
         {
           "time": "4:00",
