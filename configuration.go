@@ -356,27 +356,29 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 
 	// Now, build the TimeStamps, check that the schedule is consistent, otherwise,
 	// return an error as it it no satisfiable.
-	lastConfig := configSchedule[len(configSchedule)-1]
 	// First, add the last time point from the previous day, to make sure we fully cover
 	// the current day.
-
 	// To guarantee that, we clamp the time from the last config in the
 	// previous day to one minute before midnight the current day (in some corner
 	// cases, or with "sunset + large value"), the last value of the previous day could
 	// end up after midnight.
+	lastConfig := configSchedule[len(configSchedule)-1]
 	startOfPreviousDay := startOfDay.AddDate(0, 0, -1)
 	previousDaySunrise := sunrise.AddDate(0, 0, -1)
 	previousDaySunset := sunset.AddDate(0, 0, -1)
 	firstTimeStamp := TimeStamp{lastConfig.AsTime(startOfPreviousDay, previousDaySunrise, previousDaySunset),
 		lastConfig.ColorTemperature, lastConfig.Brightness}
-	// TODO: check if the 1 minute is really useful, otherwise the condition is not fully correct.
+	// TODO: check if the 1 minute is really useful (and if it is, fix the condition which is
+	// not full correct)
 	if firstTimeStamp.Time.After(startOfDay) || firstTimeStamp.Time.Equal(startOfDay) {
 		// TODO: log a warning.
 		firstTimeStamp.Time = startOfDay.Add(-time.Minute)
 	}
 	timeStamps = append(timeStamps, firstTimeStamp)
 	for _, config := range configSchedule {
-		timeStamps = append(timeStamps, TimeStamp{config.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset]), config.ColorTemperature, config.Brightness})
+		timeStamps = append(timeStamps,
+			TimeStamp{config.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset]),
+				config.ColorTemperature, config.Brightness})
 	}
 	// Add first timestamp of the next day to make sure we cover the current day fully.
 	// Similarly to the last timestamp of the previous day, we clamp at midnight.
@@ -404,7 +406,8 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 			// Note difference of one in timeStamps and configSchedule indices.
 			curConfig := configSchedule[(i+len(configSchedule)-1)%len(configSchedule)]
 			nextConfig := configSchedule[i%len(configSchedule)]
-			return timeStamps, fmt.Errorf("Schedule cannot be satisfied. With real sunrise %v, adjusted sunrise: %v, real sunset: %v, adjusted sunset: %v, we still get %v (%v) was still after %v (%v)",
+			return timeStamps, fmt.Errorf(
+				"Schedule cannot be satisfied. With real sunrise %v, adjusted sunrise: %v, real sunset: %v, adjusted sunset: %v, we still get %v (%v) was still after %v (%v)",
 				realSun[Sunrise], adjustedSun[Sunrise], realSun[Sunset], adjustedSun[Sunset], curConfig.Time, timeStamps[i].Time, nextConfig, timeStamps[i+1].Time)
 		}
 	}
