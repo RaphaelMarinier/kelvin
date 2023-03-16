@@ -67,13 +67,13 @@ func TestLightScheduleForDay(t *testing.T) {
 		TimeStamp{parseTime("2021-04-28 22:00"), 2000, 70},
 		TimeStamp{parseTime("2021-04-29 04:00"), 2000, 60}}
 
-	if len(s.times) != len(expectedTimes) {
-		t.Fatalf("Got schedule with unexpected length. Got %v expected %v", s.times, expectedTimes)
+	if len(s.Times) != len(expectedTimes) {
+		t.Fatalf("Got schedule with unexpected length. Got %v expected %v", s.Times, expectedTimes)
 	}
 	for i, expectedTime := range expectedTimes {
-		if expectedTime != s.times[i] {
+		if expectedTime != s.Times[i] {
 			t.Fatalf("Got unexpected timestamp at position %v. Got %v expected %v",
-				i, s.times[i], expectedTime)
+				i, s.Times[i], expectedTime)
 		}
 	}
 }

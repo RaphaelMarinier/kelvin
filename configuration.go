@@ -445,12 +445,12 @@ func (configuration *Configuration) lightScheduleForDay(
 
 	if len(lightSchedule.Schedule) > 0 {
 		// New-style schedules in the config. When present, we
-		// populate the new-style schedule `schedule.times`.
+		// populate the new-style schedule `schedule.Times`.
 		newScheduleTimes, err := ComputeNewStyleSchedule(lightSchedule.Schedule, schedule.sunrise.Time, schedule.sunset.Time, date)
 		if err != nil {
 			return schedule, err
 		}
-		schedule.times = newScheduleTimes
+		schedule.Times = newScheduleTimes
 		return schedule, nil
 	}
 

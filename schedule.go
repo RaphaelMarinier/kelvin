@@ -46,23 +46,23 @@ type Schedule struct {
 	// This covers the current day: the first timestamp is before the
 	// beginning of the current day, and the last timestamp is after the end
 	// of the current day.
-	times []TimeStamp
+	Times []TimeStamp
 }
 
 func (schedule *Schedule) currentInterval(timestamp time.Time) (Interval, error) {
-	if len(schedule.times) > 0 {
+	if len(schedule.Times) > 0 {
 		// New-style schedule.
-		for i, after_candidate := range schedule.times {
+		for i, after_candidate := range schedule.Times {
 			if after_candidate.Time.After(timestamp) {
 				if i == 0 {
-					return Interval{TimeStamp{time.Now(), 0, 0}, TimeStamp{time.Now(), 0, 0}}, fmt.Errorf("Today's schedule (%v) does not cover the current time %v", schedule.times, timestamp)
+					return Interval{TimeStamp{time.Now(), 0, 0}, TimeStamp{time.Now(), 0, 0}}, fmt.Errorf("Today's schedule (%v) does not cover the current time %v", schedule.Times, timestamp)
 				}
-				// `timetamp` lies in interval [schedule.times[i - 1], schedule.times[i]]
+				// `timetamp` lies in interval [schedule.Times[i - 1], schedule.Times[i]]
 				// TODO: do we need to fix dummy values as below?
-				return Interval{schedule.times[i-1], schedule.times[i]}, nil
+				return Interval{schedule.Times[i-1], schedule.Times[i]}, nil
 			}
 		}
-		return Interval{TimeStamp{time.Now(), 0, 0}, TimeStamp{time.Now(), 0, 0}}, fmt.Errorf("Today's schedule (%v) does not cover the current time %v", schedule.times, timestamp)
+		return Interval{TimeStamp{time.Now(), 0, 0}, TimeStamp{time.Now(), 0, 0}}, fmt.Errorf("Today's schedule (%v) does not cover the current time %v", schedule.Times, timestamp)
 	}
 	// Old-style schedule.
 	// check if timestamp respresents the current day
