@@ -1,7 +1,7 @@
 # ![Kelvin](https://user-images.githubusercontent.com/512174/37403613-b56e883a-278f-11e8-848c-5366515e920d.png)
 [![GitHub release](https://img.shields.io/github/release/stefanwichmann/kelvin.svg)](https://github.com/stefanwichmann/kelvin/releases)
 [![Github All Releases](https://img.shields.io/github/downloads/stefanwichmann/kelvin/total.svg)](https://github.com/stefanwichmann/kelvin/releases)
-[![Build Status](https://travis-ci.org/stefanwichmann/kelvin.svg?branch=master)](https://travis-ci.org/stefanwichmann/kelvin)
+[![Build Status](https://img.shields.io/github/workflow/status/stefanwichmann/kelvin/build)](https://github.com/stefanwichmann/kelvin/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/stefanwichmann/kelvin)](https://goreportcard.com/report/github.com/stefanwichmann/kelvin)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/stefanwichmann/kelvin/blob/master/LICENSE)
 [![donate](https://img.shields.io/badge/donate-PayPal-yellow.svg)](https://paypal.me/stefanwichmann)
@@ -177,7 +177,7 @@ There are a couple assumptions made:
 ## Setup
 ```shell
 # Fetch release
-wget https://github.com/stefanwichmann/kelvin/releases/download/v1.1.9/kelvin-linux-arm-v1.1.9.tar.gz -O /tmp/kelvin-arm.tar.gz
+wget https://github.com/stefanwichmann/kelvin/releases/download/v1.3.4/kelvin_1.3.4_linux_armv5.tar.gz -O /tmp/kelvin-arm.tar.gz
 
 # Create user to run as
 sudo adduser --system --group --shell /bin/nologin --no-create-home --home /opt/kelvin kelvin
