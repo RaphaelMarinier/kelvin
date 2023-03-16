@@ -126,28 +126,22 @@ var latestConfigurationVersion = 0
 func (configuration *Configuration) initializeDefaults() {
 	configuration.Version = latestConfigurationVersion
 
-	var bedTime TimedColorTemperature
-	bedTime.Time = "22:00"
-	bedTime.ColorTemperature = 2000
-	bedTime.Brightness = 60
-
-	var tvTime TimedColorTemperature
-	tvTime.Time = "20:00"
-	tvTime.ColorTemperature = 2300
-	tvTime.Brightness = 80
-
-	var wakeupTime TimedColorTemperature
-	wakeupTime.Time = "4:00"
-	wakeupTime.ColorTemperature = 2000
-	wakeupTime.Brightness = 60
-
 	var defaultSchedule LightSchedule
 	defaultSchedule.Name = "default"
 	defaultSchedule.AssociatedDeviceIDs = []int{}
+	// TODO: is this still used?
 	defaultSchedule.DefaultColorTemperature = 2750
+        // TODO: is this still used?
 	defaultSchedule.DefaultBrightness = 100
-	defaultSchedule.AfterSunset = []TimedColorTemperature{tvTime, bedTime}
-	defaultSchedule.BeforeSunrise = []TimedColorTemperature{wakeupTime}
+	defaultSchedule.Schedule = []TimedColorTemperature{	
+		TimedColorTemperature{Time: "sunrise - 1h", ColorTemperature: 2000, Brightness: 50},
+		TimedColorTemperature{Time: "sunrise - 10m", ColorTemperature: 2700, Brightness: 80},
+		TimedColorTemperature{Time: "sunrise + 10m", ColorTemperature: 5000, Brightness: 100},
+		TimedColorTemperature{Time: "16:00", ColorTemperature: 5000, Brightness: 100},
+		TimedColorTemperature{Time: "sunset - 30m", ColorTemperature: 3000, Brightness: 100},
+		TimedColorTemperature{Time: "sunset", ColorTemperature: 2700, Brightness: 100},
+		TimedColorTemperature{Time: "22:00", ColorTemperature: 2000, Brightness: 70},
+	}
 
 	configuration.Schedules = []LightSchedule{defaultSchedule}
 
@@ -297,7 +291,7 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 	realSun[Sunrise] = sunrise
 	adjustedSun = realSun
 	// First pass where we adjust the sunrise and sunset to later times if needed.
-	log.Warningf("⚙ Processing schedule")
+	log.Warningf("⚙ Processing schedule %+v", configSchedule)
 	for i, _ := range configSchedule {
 		if i-1 >= 0 {
 			previousConfig = &configSchedule[i-1]
@@ -305,21 +299,21 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 		previousTime := previousConfig.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset])
 		currentConfig := &configSchedule[i]
 		currentTime := currentConfig.AsTime(startOfDay, adjustedSun[Sunrise], adjustedSun[Sunset])
-		log.Warningf("⚙ Processing %v (%v) %v (%v)", previousConfig, previousTime, currentConfig, currentTime)
+		log.Warningf("⚙ Processing %+v (%+v) %+v (%+v)", previousConfig, previousTime, currentConfig, currentTime)
 		if currentTime.After(previousTime) || currentTime.Equal(previousTime) {
 			continue
 		}
-		log.Warningf("⚙ Inversion %v %v", previousConfig, currentConfig)
+		log.Warningf("⚙ Inversion %+v %+v", previousConfig, currentConfig)
 		// currentTime is before previousTime, we need to adjust things when possible.
 		if previousConfig.ParsedTimePointType == FixedTimePoint && currentConfig.ParsedTimePointType == FixedTimePoint {
-			return timeStamps, fmt.Errorf("Wrong order in schedule: %v appeared before %v", previousConfig.Time, currentConfig.Time)
+			return timeStamps, fmt.Errorf("Wrong order in schedule: '%v' appeared before '%v'", previousConfig.Time, currentConfig.Time)
 		}
 		if previousConfig.ParsedTimePointType != FixedTimePoint && currentConfig.ParsedTimePointType != FixedTimePoint {
 			// Inversion of two consecutive non-fixed time points.
 			// We only allow this when the first is sunrise-based and the second is sunset-based.
 			// This disallows mis-ordered time specs such as {"sunrise", "sunrise-10m"} or sunset appearing before sunrise.
 			if previousConfig.ParsedTimePointType != Sunrise || currentConfig.ParsedTimePointType != Sunset {
-				return timeStamps, fmt.Errorf("Wrong order in schedule: %v appeared before %v", previousConfig.Time, currentConfig.Time)
+				return timeStamps, fmt.Errorf("Wrong order in schedule: '%v' appeared before '%v'", previousConfig.Time, currentConfig.Time)
 			}
 		}
 		if currentConfig.ParsedTimePointType != FixedTimePoint {
@@ -329,7 +323,7 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 			adjustedSun[currentConfig.ParsedTimePointType] = adjustedSun[currentConfig.ParsedTimePointType].Add(offset)
 			// One minute transition.
 			adjustedSun[currentConfig.ParsedTimePointType] = adjustedSun[currentConfig.ParsedTimePointType].Add(time.Minute)
-			log.Warningf("⚙ Adjusting sun %v to %v (real %v)", currentConfig.ParsedTimePointType, adjustedSun[currentConfig.ParsedTimePointType], realSun[currentConfig.ParsedTimePointType])
+			log.Warningf("⚙ Adjusting sun %v to %+v (real %+v)", currentConfig.ParsedTimePointType, adjustedSun[currentConfig.ParsedTimePointType], realSun[currentConfig.ParsedTimePointType])
 		}
 	}
 
@@ -530,6 +524,7 @@ func (color *TimedColorTemperature) AsTimestamp(referenceTime time.Time) (TimeSt
 func (color *TimedColorTemperature) ParseTime() error {
 	re := regexp.MustCompile(`(?P<time>\d{1,2}:\d\d)|(?P<spec>(sunrise|sunset)(\s*(\+|-)\s*(\d+)\s*m.*){0,1})`)
 	matches := re.FindStringSubmatch(color.Time)
+        log.Warningf("⚙ Matches: %+v", matches) // TODO: bug probably comes from the submatch logic (sunrise - 1h gets matched as 'sunrise').
 	if len(matches[0]) == 0 {
 		return fmt.Errorf("Invalid timestamp %v", color.Time)
 	}

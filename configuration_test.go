@@ -188,7 +188,6 @@ func TestComputeNewStyleScheduleClampedSunrise(t *testing.T) {
 	}
 }
 
-// Failing, as expected since the main code is not ready.
 func TestComputeNewStyleScheduleClampedSunset(t *testing.T) {
 	configSchedule := []TimedColorTemperature{
 		{Time: "8:00", ColorTemperature: 5000, Brightness: 100},
@@ -224,7 +223,6 @@ func TestComputeNewStyleScheduleClampedSunset(t *testing.T) {
 	}
 }
 
-// Failing, as expected since the main code is not ready.
 func TestComputeNewStyleScheduleImpossibleSunriseClamping(t *testing.T) {
 	configSchedule := []TimedColorTemperature{
 		{Time: "8:00", ColorTemperature: 2700, Brightness: 80},
@@ -241,7 +239,6 @@ func TestComputeNewStyleScheduleImpossibleSunriseClamping(t *testing.T) {
 	}
 }
 
-// Failing, as expected since the main code is not ready.
 func TestComputeNewStyleScheduleImpossibleSunsetClamping(t *testing.T) {
 	configSchedule := []TimedColorTemperature{
 		{Time: "20:00", ColorTemperature: 2700, Brightness: 80},
@@ -377,7 +374,7 @@ func TestComputeNewStyleScheduleImpossible3(t *testing.T) {
 		{Time: "10:00", ColorTemperature: 2700, Brightness: 80},
 		{Time: "sunrise - 120m", ColorTemperature: 3000, Brightness: 90},
 		{Time: "sunrise + 120m", ColorTemperature: 5000, Brightness: 100},
-                {Time: "sunset - 120m", ColorTemperature: 3000, Brightness: 90},
+		{Time: "sunset - 120m", ColorTemperature: 3000, Brightness: 90},
 		{Time: "sunset + 120m", ColorTemperature: 5000, Brightness: 100},
 		{Time: "17:00", ColorTemperature: 2000, Brightness: 70},
 	}
@@ -422,4 +419,59 @@ func TestWriteOK(t *testing.T) {
 			t.Errorf("Could not write configuration to correct file : %v", c.ConfigurationFile)
 		}
 	}
+}
+
+func TestParseTimeWithSunrise(t *testing.T) {
+	timed := TimedColorTemperature{Time: "sunrise + 60m", ColorTemperature: 2000, Brightness: 100}
+	err := timed.ParseTime()
+	if err != nil {
+		t.Errorf("Unexpected error when parsing of %v: %v", timed, err)
+	}
+	if timed.ParsedTimePointType != Sunrise {
+		t.Errorf("Unexpected TimePointType when parsing of %+v", timed)
+	}
+	if timed.ParsedOffset != time.Minute*time.Duration(60) {
+		t.Errorf("Unexpected ParsedOffset when parsing of %+v", timed)
+	}
+}
+
+// TODO: make this test work. Parsing hours does not work.
+func TestParseTimeSunset(t *testing.T) {
+	timed := TimedColorTemperature{Time: "sunset - 1h", ColorTemperature: 2000, Brightness: 100}
+	err := timed.ParseTime()
+	if err != nil {
+		t.Errorf("Unexpected error when parsing of %v: %v", timed, err)
+	}
+	if timed.ParsedTimePointType != Sunset {
+		t.Errorf("Unexpected TimePointType when parsing of %+v", timed)
+	}
+	if timed.ParsedOffset != -time.Minute*time.Duration(60) {
+		t.Errorf("Unexpected ParsedOffset when parsing of %+v", timed)
+	}
+}
+
+// TODO: use testing/fstest properly not to write a file to the filesystem during testing.
+func TestReadAndUseDefaultConfig(t *testing.T) {
+	c := Configuration{}
+	c.initializeDefaults()
+	c.ConfigurationFile = "testdata/config_unittest.json"
+	err := c.Write()
+	if err != nil {
+		t.Errorf("Could not write configuration to file : %v", c.ConfigurationFile)
+	}
+	err = c.Read()
+	if err != nil {
+		t.Errorf("Could not read back default configuration: %v", err)
+	}
+	c.Schedules[0].AssociatedDeviceIDs = []int{1}
+	location := time.UTC
+	calculator := &MockSunStateCalculator{
+		MockSunrise: time.Date(2021, 4, 28, 7, 30, 0, 0, location),
+		MockSunset:  time.Date(2021, 4, 28, 20, 0, 0, 0, location)}
+
+	_, err = c.lightScheduleForDay(1, time.Date(2021, 4, 28, 0, 0, 1, 0, location), calculator)
+	if err != nil {
+		t.Fatalf("Got error %v", err)
+	}
+
 }
