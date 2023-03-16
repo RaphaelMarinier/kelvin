@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -73,6 +75,100 @@
               <li><i class="fa-li fa {{if .On}} fa-check-square text-success {{else}} fa-square text-danger{{end}}"></i>On</li>
               <li><i class="fa-li fa {{if .Automatic}} fa-check-square text-success {{else}} fa-square text-danger{{end}}"></i>Automatic</li>
             </ul>
+
+	    <canvas id="viz_{{.Name}}" width="100" height="100"></canvas>
+	    <script>
+	      // TODO, Features we need:
+	      // Vertical bar to see where we are at.
+	      // Vertical lines to show sunrise / sunset.
+	      // Dates properly taken into account (intervals proportional to actual durations). (DONE).
+	      // Additional info in chart.js tooltop (while hovering on a point) with the intial string (e.g. "sunset + 15m" together with a diagnose string. Requires propagating this info from the config.
+	      // See example: https://www.chartjs.org/docs/latest/samples/tooltip/content.html
+	      // Point with current brightness/color temp.
+	      var schedule = {{.Schedule}}
+	      // Array of TimeStamp data structures.
+	      var schedule_times = schedule.Times
+	      var times = schedule_times.map(timestamp => timestamp.Time)
+	      var color_temperatures = schedule_times.map(timestamp => timestamp.ColorTemperature)
+      	      var brightnesses = schedule_times.map(timestamp => timestamp.Brightness)
+	      console.log(schedule_times)
+  new Chart(document.getElementById("viz_{{.Name}}"), {
+  type: 'line',
+  data: {
+      labels: times,
+    datasets: [{ 
+        data: color_temperatures,
+        label: "Temperature",
+	yAxisID: 'temperature',
+        borderColor: "#3e95cd",
+        fill: false
+    }, { 
+        data: brightnesses,
+        label: "Brightness",
+	yAxisID: 'brightness',
+        borderColor: "#ae95cd",
+        fill: false
+      }
+    ]
+  },
+      options: {
+	  annotation: {
+        annotations: [
+          {
+            drawTime: "afterDatasetsDraw",
+            type: "line",
+            mode: "vertical",
+              scaleID: "x-axis-0",
+	      // TODO
+              value: 11, //"2021-10-19T17:38:59+02:00",
+            borderWidth: 5,
+            borderColor: "red",
+            label: {
+              content: "TODAY",
+              enabled: true,
+              position: "top"
+            }
+          }
+        ]
+      },
+	  interaction: {
+	      intersect: false,
+	      mode: 'index',
+	  },
+      scales: {
+	  x: {
+	      type: 'time',
+	      time: {
+		  unit: 'hour'
+	      },
+	      ticks: {
+		  source: 'auto',
+	      }
+	  },
+      temperature: {
+        type: 'linear',
+        position: 'right',
+      },
+      brightness: {
+        type: 'linear',
+        position: 'left',
+      },
+    },
+    title: {
+      display: true,
+      text: 'TODO'
+    }
+  }
+});
+</script>
+
+	    
+	    target temperature {{.TargetLightState.ColorTemperature}}
+	    target brightness {{.TargetLightState.Brightness}}
+	    Current interval {{.Interval}}
+   	    Current (internal) temp {{.HueLight.CurrentColorTemperature}} (internal) brightness {{.HueLight.CurrentBrightness}}
+	    <!-- TODO: make a graph out of this schedule -->
+	    Schedule {{.Schedule}}
             <button type="button" class="enableKelvinButton btn btn-primary btn-block {{if or (eq .Automatic true) (eq .Tracking false)}}disabled{{end}}">Enable Kelvin</button>
           </div>
         </div>
@@ -86,6 +182,10 @@
     </div>
     <div id="message"></div>
   </div><!-- /.container -->
+
+
+
+
   <!-- Bootstrap core JavaScript
   ================================================== -->
   <!-- Placed at the end of the document so the pages load faster -->
@@ -95,5 +195,10 @@
   <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
   <script src="/static/js/ie10-viewport-bug-workaround.js"></script>
   <script src="/static/js/dashboard.js"></script>
+<!--<script src="//d3js.org/d3.v4.min.js"></script>-->
+<!--   <script src="https://d3js.org/d3.v7.min.js"></script> -->
+
+
+
 </body>
 </html>

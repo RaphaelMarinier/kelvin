@@ -115,6 +115,7 @@ type Configuration struct {
 
 // TimeStamp represents a parsed and validated TimedColorTemperature.
 type TimeStamp struct {
+// TODO: add unparsed field for pretty-printing (e.g. in dashboard).
 	Time             time.Time
 	ColorTemperature int
 	Brightness       int

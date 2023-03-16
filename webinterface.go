@@ -70,7 +70,14 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		dashboardTemplate := template.Must(template.New("dashboard.html").ParseGlob("gui/template/dashboard.html"))
-		err := dashboardTemplate.Execute(w, lights)
+		// TODO: introduce another datastructure instead of re-using Light (E.g. DisplayLight).
+		var exported_lights []*Light
+		for _, light := range lights {
+ 		  l := light
+		  l.Name = strings.ReplaceAll(l.Name, " ", "_")
+                  exported_lights = append(exported_lights, l)
+                }
+		err := dashboardTemplate.Execute(w, exported_lights)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
