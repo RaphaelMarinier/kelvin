@@ -133,7 +133,7 @@ func (configuration *Configuration) initializeDefaults() {
 	defaultSchedule.DefaultColorTemperature = 2750
         // TODO: is this still used?
 	defaultSchedule.DefaultBrightness = 100
-	defaultSchedule.Schedule = []TimedColorTemperature{	
+	defaultSchedule.Schedule = []TimedColorTemperature{
 		TimedColorTemperature{Time: "sunrise - 1h", ColorTemperature: 2000, Brightness: 50},
 		TimedColorTemperature{Time: "sunrise - 10m", ColorTemperature: 2700, Brightness: 80},
 		TimedColorTemperature{Time: "sunrise + 10m", ColorTemperature: 5000, Brightness: 100},
@@ -519,12 +519,21 @@ func (color *TimedColorTemperature) AsTimestamp(referenceTime time.Time) (TimeSt
 // This function parses the time field of a TimedColorTemperature coming from the config.
 // Accepted formats:
 // - HH:MM
-// - (sunrise|sunset) [ (+|-) NN m[inutes] ]
+// - (sunrise|sunset) [ (+|-) NN unit ] where unit is in (m, min, minute, minutes, h, hour, hours)
 // with obvious semantics.
 func (color *TimedColorTemperature) ParseTime() error {
-	re := regexp.MustCompile(`(?P<time>\d{1,2}:\d\d)|(?P<spec>(sunrise|sunset)(\s*(\+|-)\s*(\d+)\s*m.*){0,1})`)
+	minute_symbols := map[string]bool{
+		"m":       true,
+		"min":     true,
+		"minute":  true,
+		"minutes": true,
+	}
+	re_str := `(?P<time>\d{1,2}:\d\d\s*$)|(?P<spec>(sunrise|sunset)(\s*(\+|-)\s*(\d+)\s*(m|min|minute|minutes|h|hour|hours)\s*){0,1}$)`
+	re := regexp.MustCompile(re_str)
 	matches := re.FindStringSubmatch(color.Time)
-        log.Warningf("⚙ Matches: %+v", matches) // TODO: bug probably comes from the submatch logic (sunrise - 1h gets matched as 'sunrise').
+	if matches == nil {
+		return fmt.Errorf("Timestamp '%v' is invalid, it should match the regexp '%v', e.g.: '15:04' or 'sunrise + 60m'", color.Time, re_str)
+	}
 	if len(matches[0]) == 0 {
 		return fmt.Errorf("Invalid timestamp %v", color.Time)
 	}
@@ -542,19 +551,23 @@ func (color *TimedColorTemperature) ParseTime() error {
 		// sunrise|sunset [(+|-) NN minutes].
 		if matches[3] == "sunrise" {
 			color.ParsedTimePointType = Sunrise
-		} else { // sunset
+		} else { // sunset.
 			color.ParsedTimePointType = Sunset
 		}
 		if len(matches[4]) > 0 { // Offset to the sunrise/sunset.
-			minutes, err := strconv.Atoi(matches[6])
+			unit := time.Hour
+			if minute_symbols[matches[7]] {
+				unit = time.Minute
+			}
+			num, err := strconv.Atoi(matches[6])
 			if err != nil {
 				return fmt.Errorf("Failed to parse sunrise/sunset offset %v: %v", matches[6], err)
 			}
 			if matches[5] == "+" {
-				color.ParsedOffset = time.Minute * time.Duration(minutes)
+				color.ParsedOffset = unit * time.Duration(num)
 			} else {
 				// minus
-				color.ParsedOffset = -time.Minute * time.Duration(minutes)
+				color.ParsedOffset = -unit * time.Duration(num)
 			}
 		}
 		return nil

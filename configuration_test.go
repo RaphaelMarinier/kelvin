@@ -421,32 +421,53 @@ func TestWriteOK(t *testing.T) {
 	}
 }
 
-func TestParseTimeWithSunrise(t *testing.T) {
-	timed := TimedColorTemperature{Time: "sunrise + 60m", ColorTemperature: 2000, Brightness: 100}
-	err := timed.ParseTime()
-	if err != nil {
-		t.Errorf("Unexpected error when parsing of %v: %v", timed, err)
-	}
-	if timed.ParsedTimePointType != Sunrise {
-		t.Errorf("Unexpected TimePointType when parsing of %+v", timed)
-	}
-	if timed.ParsedOffset != time.Minute*time.Duration(60) {
-		t.Errorf("Unexpected ParsedOffset when parsing of %+v", timed)
-	}
+type ParseTimeTestCase struct {
+	TimeSpec                    string
+	ExpectedErrorSubstr         string
+	ExpectedParsedTimePointType TimePointType
+	ExpectedParsedTimeInDay     time.Time
+	ExpectedParsedOffset        time.Duration
 }
 
-// TODO: make this test work. Parsing hours does not work.
-func TestParseTimeSunset(t *testing.T) {
-	timed := TimedColorTemperature{Time: "sunset - 1h", ColorTemperature: 2000, Brightness: 100}
-	err := timed.ParseTime()
-	if err != nil {
-		t.Errorf("Unexpected error when parsing of %v: %v", timed, err)
+func TestParseTimeSpec(t *testing.T) {
+	test_cases := []ParseTimeTestCase{
+		{"sunrise + 60m", "", Sunrise, time.Time{}, time.Minute * time.Duration(60)},
+		{"sunrise + 60 m", "", Sunrise, time.Time{}, time.Minute * time.Duration(60)},
+		{"sunrise + 60 min", "", Sunrise, time.Time{}, time.Minute * time.Duration(60)},
+		{"sunrise + 60min", "", Sunrise, time.Time{}, time.Minute * time.Duration(60)},
+		{"sunrise - 60 minutes", "", Sunrise, time.Time{}, -time.Minute * time.Duration(60)},
+		{"sunset - 1h ", "", Sunset, time.Time{}, -time.Hour * time.Duration(1)},
+		{"sunset - 1hour", "", Sunset, time.Time{}, -time.Hour * time.Duration(1)},
+		{"20:00", "", FixedTimePoint, time.Date(0, time.January, 1, 20, 0, 0, 0, time.UTC), time.Duration(0)},
+		{"sunset + 1", "invalid", UnsetTimePoint, time.Time{}, time.Duration(0)},
+		{"sunset + 1d", "invalid", UnsetTimePoint, time.Time{}, time.Duration(0)},
+		{"sunset + m", "invalid", UnsetTimePoint, time.Time{}, time.Duration(0)},
 	}
-	if timed.ParsedTimePointType != Sunset {
-		t.Errorf("Unexpected TimePointType when parsing of %+v", timed)
-	}
-	if timed.ParsedOffset != -time.Minute*time.Duration(60) {
-		t.Errorf("Unexpected ParsedOffset when parsing of %+v", timed)
+	for _, test_case := range test_cases {
+		timed := TimedColorTemperature{Time: test_case.TimeSpec, ColorTemperature: 2000, Brightness: 100}
+		err := timed.ParseTime()
+		if test_case.ExpectedErrorSubstr != "" {
+			if err == nil {
+				t.Errorf("Expected error with substr %v when parsing of %#v. Got no error", test_case.ExpectedErrorSubstr, timed)
+			}
+			if !strings.Contains(err.Error(), test_case.ExpectedErrorSubstr) {
+				t.Errorf("Expected error with substr %v when parsing of %#v. Got different error %v", test_case.ExpectedErrorSubstr, timed, err)
+			}
+			continue
+		}
+
+		if err != nil {
+			t.Errorf("Unexpected error when parsing of %#v: %v", timed, err)
+		}
+		if timed.ParsedTimePointType != test_case.ExpectedParsedTimePointType {
+			t.Errorf("Unexpected TimePointType when parsing of %#v, expected %v", timed, test_case.ExpectedParsedTimePointType)
+		}
+		if timed.ParsedTimeInDay != test_case.ExpectedParsedTimeInDay {
+			t.Errorf("Unexpected ParsedTimeInDay when parsing of %#v, expected %v", timed, test_case.ExpectedParsedTimeInDay)
+		}
+		if timed.ParsedOffset != test_case.ExpectedParsedOffset {
+			t.Errorf("Unexpected ParsedOffset when parsing of %#v, expected %v", timed, test_case.ExpectedParsedOffset)
+		}
 	}
 }
 
@@ -473,5 +494,4 @@ func TestReadAndUseDefaultConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Got error %v", err)
 	}
-
 }
