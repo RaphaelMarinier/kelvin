@@ -115,7 +115,7 @@ type Configuration struct {
 
 // TimeStamp represents a parsed and validated TimedColorTemperature.
 type TimeStamp struct {
-// TODO: add unparsed field for pretty-printing (e.g. in dashboard).
+	// TODO: add unparsed field for pretty-printing (e.g. in dashboard).
 	Time             time.Time
 	ColorTemperature int
 	Brightness       int
@@ -131,7 +131,7 @@ func (configuration *Configuration) initializeDefaults() {
 	defaultSchedule.AssociatedDeviceIDs = []int{}
 	// TODO: is this still used?
 	defaultSchedule.DefaultColorTemperature = 2750
-        // TODO: is this still used?
+	// TODO: is this still used?
 	defaultSchedule.DefaultBrightness = 100
 	defaultSchedule.Schedule = []TimedColorTemperature{
 		TimedColorTemperature{Time: "sunrise - 1h", ColorTemperature: 2000, Brightness: 50},
@@ -284,7 +284,7 @@ func ComputeNewStyleSchedule(configSchedule []TimedColorTemperature,
 	previousConfig := &TimedColorTemperature{"", -1, -1, FixedTimePoint,
 		startOfDay, time.Duration(0)}
 	// realSun contains real sunrise/sunset times for the current day.
-        // adjustedSun will contain adjusted sunrise/sunset so that a sunrise- or
+	// adjustedSun will contain adjusted sunrise/sunset so that a sunrise- or
 	// sunset-based time never crosses a fixed time.
 	var adjustedSun, realSun [NumTimePointTypes]time.Time
 	realSun[Sunset] = sunset
