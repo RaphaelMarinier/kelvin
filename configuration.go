@@ -129,10 +129,6 @@ func (configuration *Configuration) initializeDefaults() {
 	var defaultSchedule LightSchedule
 	defaultSchedule.Name = "default"
 	defaultSchedule.AssociatedDeviceIDs = []int{}
-	// TODO: is this still used?
-	defaultSchedule.DefaultColorTemperature = 2750
-	// TODO: is this still used?
-	defaultSchedule.DefaultBrightness = 100
 	defaultSchedule.Schedule = []TimedColorTemperature{
 		TimedColorTemperature{Time: "sunrise - 1h", ColorTemperature: 2000, Brightness: 50},
 		TimedColorTemperature{Time: "sunrise - 10m", ColorTemperature: 2700, Brightness: 80},
@@ -435,13 +431,13 @@ func (configuration *Configuration) lightScheduleForDay(
 	}
 
 	schedule.enableWhenLightsAppear = lightSchedule.EnableWhenLightsAppear
-	schedule.sunrise = TimeStamp{sunStateCalculator.CalculateSunrise(date, configuration.Location.Latitude, configuration.Location.Longitude), lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
-	schedule.sunset = TimeStamp{sunStateCalculator.CalculateSunset(date, configuration.Location.Latitude, configuration.Location.Longitude), lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
+	sunrise := sunStateCalculator.CalculateSunrise(date, configuration.Location.Latitude, configuration.Location.Longitude)
+	sunset := sunStateCalculator.CalculateSunset(date, configuration.Location.Latitude, configuration.Location.Longitude)
 
 	if len(lightSchedule.Schedule) > 0 {
 		// New-style schedules in the config. When present, we
 		// populate the new-style schedule `schedule.Times`.
-		newScheduleTimes, err := ComputeNewStyleSchedule(lightSchedule.Schedule, schedule.sunrise.Time, schedule.sunset.Time, date)
+		newScheduleTimes, err := ComputeNewStyleSchedule(lightSchedule.Schedule, sunrise, sunset, date)
 		if err != nil {
 			return schedule, err
 		}
@@ -450,6 +446,8 @@ func (configuration *Configuration) lightScheduleForDay(
 	}
 
 	// Old-style schedule.
+	schedule.sunrise = TimeStamp{sunrise, lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
+	schedule.sunset = TimeStamp{sunset, lightSchedule.DefaultColorTemperature, lightSchedule.DefaultBrightness}
 	// Before sunrise candidates
 	schedule.beforeSunrise = []TimeStamp{}
 	for _, candidate := range lightSchedule.BeforeSunrise {

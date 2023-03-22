@@ -492,6 +492,6 @@ func TestReadAndUseDefaultConfig(t *testing.T) {
 
 	_, err = c.lightScheduleForDay(1, time.Date(2021, 4, 28, 0, 0, 1, 0, location), calculator)
 	if err != nil {
-		t.Fatalf("Got error %v", err)
+		t.Fatalf("Got error: %v", err)
 	}
 }
