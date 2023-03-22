@@ -95,27 +95,45 @@ Kelvin will create it's configuration file `config.json` in the current director
   "schedules": [
     {
       "name": "default",
-      "associatedDeviceIDs": [1,2,3,4,5,6],
-      "enableWhenLightsAppear": true,
-      "defaultColorTemperature": 2750,
-      "defaultBrightness": 100,
-      "beforeSunrise": [
-        {
-          "time": "4:00",
-          "colorTemperature": 2000,
-          "brightness": 60
-        }
+      "associatedDeviceIDs": [
+        4
       ],
-      "afterSunset": [
+      "enableWhenLightsAppear": true,
+      "schedule": [
         {
-          "time": "20:00",
-          "colorTemperature": 2300,
+          "time": "sunrise - 1h",
+          "colorTemperature": 2000,
+          "brightness": 50
+        },
+        {
+          "time": "sunrise - 10m",
+          "colorTemperature": 2700,
           "brightness": 80
+        },
+        {
+          "time": "sunrise + 10m",
+          "colorTemperature": 5000,
+          "brightness": 100
+        },
+        {
+          "time": "16:00",
+          "colorTemperature": 5000,
+          "brightness": 100
+        },
+        {
+          "time": "sunset - 30m",
+          "colorTemperature": 3000,
+          "brightness": 100
+        },
+        {
+          "time": "sunset",
+          "colorTemperature": 2700,
+          "brightness": 100
         },
         {
           "time": "22:00",
           "colorTemperature": 2000,
-          "brightness": 60
+          "brightness": 70
         }
       ]
     }
@@ -138,13 +156,134 @@ Each schedule must be configured in the following format:
 | ---- | ----------- |
 | name | The name of this schedule. This is only used for better readability. |
 | associatedDeviceIDs | A list of all devices/lights that should be managed according to this schedule. Kelvin will print an overview of all your devices on startup. You should use this to associate your lights with the right schedule. *ATTENTION: Every light should be associated to only one schedule. If you skip an ID this device will be ignored.* |
-| enableWhenLightsAppear | If this element is set to `true` Kelvin will be activated automatically whenever you switch an associated light on. If set to `false` Kelvin won't take over until you enable a [Kelvin Scene](#kelvin-scenes) or activate it via web interface. |
-| defaultColorTemperature | This default color temperature will be used between sunrise and sunset. Valid values are between 1000K and 6500K. See [Wikipedia](https://en.wikipedia.org/wiki/Color_temperature) for reference values. If you set this value to -1 Kelvin will ignore the color temperature and you can change it manually. ATTENTION: The supported color temperature minimum will vary between bulb models. Kelvin will respect these limits automatically.|
-| defaultBrightness | This default brightness value will be used between sunrise and sunset. Valid values are between 0% and 100%. If you set this value to -1 Kelvin will ignore the brightness and you can change it manually.|
-| beforeSunrise | This element contains a list of timestamps and their configuration you want to set between midnight and sunrise of any given day. The *time* value must follow the `hh:mm` format. *colorTemperature* and *brightness* must follow the same rules as the default values. |
-| afterSunset | This element contains a list of timestamps and their configuration you want to set between sunset and midnight of any given day. The *time* value must follow the `hh:mm` format. *colorTemperature* and *brightness* must follow the same rules as the default values. |
+| schedule | This element contains a list of time specifications with the corresponding light configurations. The light states will be interpolated between these time points. See [the next section](#details-on-the-light-schedule) for more details. |
 
 After altering the configuration you have to restart Kelvin. Just kill the running instance (`Ctrl+C` or `kill $PID`) or send a HUP signal (`kill -s HUP $PID`) to the process to restart (unix only).
+
+# Details on the light schedule
+
+The light schedule is specified as a list of time points that are
+either absolute (specific time in the day, e.g. `08:00`), or relative
+to the sunset and sunrise (e.g. `sunrise - 30m` for 30 minutes before
+sunrise), together with color temperature and brightness.
+
+Example:
+
+``` json
+[
+  {
+    "time": "sunrise - 1h",
+    "colorTemperature": 2000,
+    "brightness": 50
+  },
+  {
+    "time": "sunrise - 10m",
+    "colorTemperature": 2700,
+    "brightness": 80
+  },
+  {
+    "time": "sunrise + 10m",
+    "colorTemperature": 5000,
+    "brightness": 100
+  },
+  {
+    "time": "08:00",
+    "colorTemperature": 5000,
+    "brightness": 100
+  },
+  {
+    "time": "16:00",
+    "colorTemperature": 5000,
+    "brightness": 100
+  },
+  {
+    "time": "sunset - 30m",
+    "colorTemperature": 3000,
+    "brightness": 100
+  },
+  {
+    "time": "sunset",
+    "colorTemperature": 2700,
+    "brightness": 100
+  },
+  {
+    "time": "22:00",
+    "colorTemperature": 2000,
+    "brightness": 70
+  }
+]
+```
+* The *time* value can be an absolute time with format `hh:mm` or
+  relative to the current day sunset or sunrise times, e.g. `sunrise`,
+  `sunrise - 30m`, `sunset + 1h`.
+* *colorTemperature* must be between 1000K and 6500K. See
+  [Wikipedia](https://en.wikipedia.org/wiki/Color_temperature) for
+  reference values. If you set this value to -1 Kelvin will ignore the
+  color temperature and you can change it manually. ATTENTION: The
+  supported color temperature minimum will vary between bulb
+  models. Kelvin will respect these limits automatically.
+* *brightness* must be between 0% and 100%. If you set this value to
+  -1 Kelvin will ignore the brightness and you can change it manually.
+
+Between two consecutive time points, Kelvin will interpolate the color
+temperature and brightness.
+
+The times should be ordered from earliest to latest. However, it might
+be difficult to write a config that will remain ordered throughout the
+year as the time of sunset and sunrise vary. When the config is not
+well ordered, Kelvin will attempt to make the config valid by moving
+the time points relative to sunset and sunrise as needed. Namely,
+Kelvin will "clamp" relative time points to the absolute time points
+when needed.
+
+In the example above, if the sunrise is at 07:00 and the sunset at
+20:00, the schedule is ordered from earliest to latest and no clamping
+takes place. I.e. `sunrise - 1h` will translate to 06:00, `sunset -
+30m` will translate to 19:30.
+
+However, if the sunrise is at 8:30, there is a problem since
+`sunrise + 10m` would translate to 08:30 which is after the following
+08:00 time point. Kelvin will instead:
+* Clamp `sunrise + 10m` at 07:59, to make sure it happens before the
+  next entry at 08:00.
+* Infer a "virtual" sunrise time of 07:49.
+* Use that virtual sunrise time in other relative time points,
+  e.g. `sunrise - 1h` becomes 06:49 and `sunrise - 10m` becomes 07:39.
+  This has the benefit of keeping intact the transition periods around
+  sunrise and sunset, which will typically be specified as a warm
+  color temperature at `sunrise - Xm` and a cool one at `sunrise + Ym`
+
+The times relative to sunset are clamped the same way.
+
+Even with this lenient logic, one can still write invalid schedules
+that will be rejected. For instance, in the following schedule, it's
+impossible to "clamp" the sunrise to a value that will make this
+schedule ordered in increasing time order:
+
+``` json
+[
+  {
+    "time": "07:30",
+    "colorTemperature": 2000,
+    "brightness": 50
+  },
+  {
+    "time": "sunrise - 20m",
+    "colorTemperature": 2700,
+    "brightness": 80
+  },
+  {
+    "time": "sunrise + 20m",
+    "colorTemperature": 5000,
+    "brightness": 100
+  },
+  {
+    "time": "08:00",
+    "colorTemperature": 5000,
+    "brightness": 100
+  },
+]
+```
 
 # Kelvin Scenes
 Kelvin has the ability to detect certain light scenes you have programmed in your hue system. If you activate one of these Kelvin scenes it will take control of the light and manage it for you. You can use this feature to reactivate Kelvin after manually changing the light state or to associate Kelvin with a certain button on your Hue Tap for example.
