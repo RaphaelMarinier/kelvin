@@ -189,7 +189,7 @@ func (light *Light) update(transistionTime time.Duration) (bool, error) {
 func (light *Light) updateSchedule(schedule Schedule) {
 	light.Schedule = schedule
 	light.Scheduled = true
-	log.Printf("💡 Light %s - Activating schedule for %v (Sunrise: %v, Sunset: %v)", light.Name, light.Schedule.endOfDay.Format("Jan 2 2006"), light.Schedule.sunrise.Time.Format("15:04"), light.Schedule.sunset.Time.Format("15:04"))
+	log.Printf("💡 Light %s - Activating schedule for %v: %#v", light.Name, light.Schedule.endOfDay.Format("Jan 2 2006"), schedule)
 	light.updateInterval()
 }
 

@@ -63,15 +63,15 @@ type LightSchedule struct {
 	EnableWhenLightsAppear bool   `json:"enableWhenLightsAppear"`
 
 	// Old-style schedule. Not used when the new-style schedule below is used.
-	DefaultColorTemperature int                     `json:"defaultColorTemperature"`
-	DefaultBrightness       int                     `json:"defaultBrightness"`
-	BeforeSunrise           []TimedColorTemperature `json:"beforeSunrise"`
-	AfterSunset             []TimedColorTemperature `json:"afterSunset"`
+	DefaultColorTemperature int                     `json:"defaultColorTemperature,omitempty"`
+	DefaultBrightness       int                     `json:"defaultBrightness,omitempty"`
+	BeforeSunrise           []TimedColorTemperature `json:"beforeSunrise,omitempty"`
+	AfterSunset             []TimedColorTemperature `json:"afterSunset,omitempty"`
 
 	// New-style schedule.
 	// The `time` field of each time point can be a time (HH:MM), 'sunrise', 'sunset',
 	// 'sunrise +- NN minutes', 'sunset +- NN minutes'.
-	Schedule []TimedColorTemperature `json:"schedule"`
+	Schedule []TimedColorTemperature `json:"schedule,omitempty"`
 }
 
 // Type of a time point, i.e. whether it comes from a fixed time (e.g. "12:00"), a
